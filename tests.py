@@ -8,7 +8,6 @@ FILE_LOAD_NAME = "model.h5"
 FILE_LOAD = False
 
 def bike_dataset(epochs=100, learning_rate=0.01, chaos_punishment=6):
-    print(tf.__version__)
     """
     Main executable for the program
     :return: None
@@ -18,13 +17,11 @@ def bike_dataset(epochs=100, learning_rate=0.01, chaos_punishment=6):
     _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n","," ))
     date_data = make_date(np.asarray(data)[:, 0])
     data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
-    print(data.shape)
     np.random.shuffle(data)
 
     #Remove non-working days
     mask = (data[:, -1] != 0)
     data = data[mask, :]
-    print(data.shape)
 
     #Split data into test and train data
     y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
@@ -33,7 +30,6 @@ def bike_dataset(epochs=100, learning_rate=0.01, chaos_punishment=6):
     x_test = x_data[int(x_data.shape[0]*SPLIT):, :]
     y_data = y_data[:int(x_data.shape[0]*SPLIT), :]
     x_data = x_data[:int(x_data.shape[0]*SPLIT), :]
-    print(y_test.shape)
 
     my_optimizer = MA.MaxAdam(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
@@ -53,7 +49,6 @@ def bike_dataset(epochs=100, learning_rate=0.01, chaos_punishment=6):
     callbacks = [MA.MaxAdamCallback(my_optimizer, 20)]
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2, verbose=False)
-    model.load_weights(FILE_LOAD_NAME)
     # Graphing the MaxAdam Results
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
