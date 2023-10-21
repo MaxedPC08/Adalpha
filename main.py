@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
+import utils
 
 
 class String_Verifier:
@@ -146,7 +147,7 @@ FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 FILE_LOAD_NAME = "model.h5"
 
-FILE_LOAD = True
+FILE_LOAD = False
 
 def main():
     """
@@ -177,6 +178,8 @@ def main():
     x_data = x_data[:int(x_data.shape[0]*SPLIT), :]
     print(y_test.shape)
 
+    my_optimizer = utils.MaxAdam(learning_rate=0.01, chaos_punishment=4)
+
     #Create
     input_layer = tf.keras.layers.Input(shape=(15))
     normalized_in = tf.keras.layers.BatchNormalization()(input_layer)
@@ -195,10 +198,10 @@ def main():
         model.load_weights(FILE_LOAD_NAME)
 
     callbacks = [tf.keras.callbacks.ModelCheckpoint(FILE_LOAD_NAME, "val_loss", save_best_only=True),
-                 tf.keras.callbacks.ReduceLROnPlateau(factor=0.9, patience=5),
-                 tf.keras.callbacks.EarlyStopping(patience=50)]
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss="mse")
-    history = model.fit(x_data, y_data, epochs=1000, batch_size=128, callbacks=callbacks, validation_split=0.2)
+                 tf.keras.callbacks.EarlyStopping(patience=50),
+                 utils.MaxAdamCallback(my_optimizer, 20)]
+    model.compile(optimizer=my_optimizer, loss="mse")
+    history = model.fit(x_data, y_data, epochs=100, batch_size=128, callbacks=callbacks, validation_split=0.2)
     model.load_weights(FILE_LOAD_NAME)
     # Graphing the
     print("Done with ANN fitting.")
