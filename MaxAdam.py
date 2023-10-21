@@ -71,6 +71,8 @@ class MaxAdam(Optimizer):
     def __init__(
         self,
         learning_rate=0.001,
+        chaos_punishment=1,
+        modifier_multiplier=1,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-7,
@@ -84,7 +86,6 @@ class MaxAdam(Optimizer):
         ema_overwrite_frequency=None,
         jit_compile=True,
         name="Adam",
-        chaos_punishment=1,
         **kwargs
     ):
         super().__init__(
@@ -105,6 +106,7 @@ class MaxAdam(Optimizer):
         self.epsilon = epsilon
         self.amsgrad = amsgrad
         self.chaos_punish = chaos_punishment
+        self.mod_mult = modifier_multiplier
         self.std = 0.0
 
     def build(self, var_list):
@@ -156,7 +158,7 @@ class MaxAdam(Optimizer):
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
 
-        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std)**self.chaos_punish
+        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.mod_mult)**self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
@@ -204,7 +206,7 @@ class MaxAdam(Optimizer):
         )
         return config
 
-class MaxAdamCallback(tf.keras.callbacks.Callback):
+class MaxAdamCallbackLegacy(tf.keras.callbacks.Callback):
     """A class that updates the loss of the Max_Adam optimizer"""
     def __init__(self, optimizer: MaxAdam, num_to_hold):
         super().__init__()
@@ -222,3 +224,21 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
         self.losses = self.losses[-self.hold:]
         self._calculate_loss_std()
 
+class MaxAdamCallback(tf.keras.callbacks.Callback):
+    """A class that updates the loss of the Max_Adam optimizer"""
+    def __init__(self, optimizer: MaxAdam, num_to_hold):
+        super().__init__()
+        self.optimizer = optimizer
+        self.losses = []
+        self.hold = num_to_hold
+        self.std = 0.0
+
+
+    def _calculate_loss_std(self):
+        std = np.divide(np.std(self.losses)/np.mean(self.losses)-self.std, self.std, out=np.zeros_like(self.std), where=self.std!=0)
+        self.optimizer.update_loss(std)
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.losses.append(logs["loss"])
+        self.losses = self.losses[-self.hold:]
+        self._calculate_loss_std()
