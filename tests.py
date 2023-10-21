@@ -3,9 +3,6 @@ import MaxAdam as MA
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
-FILE_LOAD_NAME = "model.h5"
-
-FILE_LOAD = False
 
 def bike_dataset(callback, epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult = 1):
     print(tf.__version__)

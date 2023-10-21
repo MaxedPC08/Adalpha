@@ -1,6 +1,8 @@
 import csv
 import numpy as np
 import numpy.typing as npt
+import tensorflow as tf
+import matplotlib.pyplot as plt
 
 class String_Verifier:
     """
