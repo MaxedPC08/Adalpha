@@ -1,224 +1,128 @@
-import tensorflow as tf
-from keras.src.optimizers import optimizer
-from keras.src.saving.object_registration import register_keras_serializable
-from tensorflow.python.util.tf_export import keras_export
+
+import csv
+
+import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
+import tensorflow as tf
+import utils
 
-@register_keras_serializable()
-@keras_export(
-    "keras.optimizers.Adam",
-    "keras.optimizers.experimental.Adam",
-    "keras.dtensor.experimental.optimizers.Adam",
-    v1=[],
-)
-class MaxAdam(optimizer.Optimizer):
-    r"""Optimizer that implements the Adam algorithm.
 
-    Adam optimization is a stochastic gradient descent method that is based on
-    adaptive estimation of first-order and second-order moments.
-
-    According to
-    [Kingma et al., 2014](http://arxiv.org/abs/1412.6980),
-    the method is "*computationally
-    efficient, has little memory requirement, invariant to diagonal rescaling of
-    gradients, and is well suited for problems that are large in terms of
-    data/parameters*".
-
-    Args:
-      learning_rate: A `tf.Tensor`, floating point value, a schedule that is a
-        `tf.keras.optimizers.schedules.LearningRateSchedule`, or a callable
-        that takes no arguments and returns the actual value to use. The
-        learning rate. Defaults to `0.001`.
-      beta_1: A float value or a constant float tensor, or a callable
-        that takes no arguments and returns the actual value to use. The
-        exponential decay rate for the 1st moment estimates. Defaults to `0.9`.
-      beta_2: A float value or a constant float tensor, or a callable
-        that takes no arguments and returns the actual value to use. The
-        exponential decay rate for the 2nd moment estimates. Defaults to
-        `0.999`.
-      epsilon: A small constant for numerical stability. This epsilon is
-        "epsilon hat" in the Kingma and Ba paper (in the formula just before
-        Section 2.1), not the epsilon in Algorithm 1 of the paper. Defaults to
-        `1e-7`.
-      amsgrad: Boolean. Whether to apply AMSGrad variant of this algorithm from
-        the paper "On the Convergence of Adam and beyond". Defaults to `False`.
-      {{base_optimizer_keyword_args}}
-
-    Reference:
-      - [Kingma et al., 2014](http://arxiv.org/abs/1412.6980)
-      - [Reddi et al., 2018](
-          https://openreview.net/pdf?id=ryQu7f-RZ) for `amsgrad`.
-
-    Notes:
-
-    The default value of 1e-7 for epsilon might not be a good default in
-    general. For example, when training an Inception network on ImageNet a
-    current good choice is 1.0 or 0.1. Note that since Adam uses the
-    formulation just before Section 2.1 of the Kingma and Ba paper rather than
-    the formulation in Algorithm 1, the "epsilon" referred to here is "epsilon
-    hat" in the paper.
-
-    The sparse implementation of this algorithm (used when the gradient is an
-    IndexedSlices object, typically because of `tf.gather` or an embedding
-    lookup in the forward pass) does apply momentum to variable slices even if
-    they were not used in the forward pass (meaning they have a gradient equal
-    to zero). Momentum decay (beta1) is also applied to the entire momentum
-    accumulator. This means that the sparse behavior is equivalent to the dense
-    behavior (in contrast to some momentum implementations which ignore momentum
-    unless a variable slice was actually used).
+class String_Verifier:
     """
-
-    def __init__(
-        self,
-        learning_rate=0.001,
-        beta_1=0.9,
-        beta_2=0.999,
-        epsilon=1e-7,
-        amsgrad=False,
-        weight_decay=None,
-        clipnorm=None,
-        clipvalue=None,
-        global_clipnorm=None,
-        use_ema=False,
-        ema_momentum=0.99,
-        ema_overwrite_frequency=None,
-        jit_compile=True,
-        name="Adam",
-        chaos_punishment=1,
-        **kwargs
-    ):
-        super().__init__(
-            name=name,
-            weight_decay=weight_decay,
-            clipnorm=clipnorm,
-            clipvalue=clipvalue,
-            global_clipnorm=global_clipnorm,
-            use_ema=use_ema,
-            ema_momentum=ema_momentum,
-            ema_overwrite_frequency=ema_overwrite_frequency,
-            jit_compile=jit_compile,
-            **kwargs
-        )
-        self._learning_rate = self._build_learning_rate(learning_rate)
-        self.beta_1 = beta_1
-        self.beta_2 = beta_2
-        self.epsilon = epsilon
-        self.amsgrad = amsgrad
-        self.chaos_punish = chaos_punishment
-        self.std = 0.0
-
-    def build(self, var_list):
-        """Initialize optimizer variables.
-
-        Adam optimizer has 3 types of variables: momentums, velocities and
-        velocity_hat (only set when amsgrad is applied),
-
-        Args:
-          var_list: list of model variables to build Adam variables on.
+    Class to hold a verifier and a runtime definied constant
+    """
+    def __init__(self, sym: str = "?"):
         """
-        super().build(var_list)
-        if hasattr(self, "_built") and self._built:
-            return
-        self._built = True
-        self._momentums = []
-        self._velocities = []
-        for var in var_list:
-            self._momentums.append(
-                self.add_variable_from_reference(
-                    model_variable=var, variable_name="m"
-                )
-            )
-            self._velocities.append(
-                self.add_variable_from_reference(
-                    model_variable=var, variable_name="v"
-                )
-            )
-        if self.amsgrad:
-            self._velocity_hats = []
-            for var in var_list:
-                self._velocity_hats.append(
-                    self.add_variable_from_reference(
-                        model_variable=var, variable_name="vhat"
-                    )
-                )
-    def update_loss(self, new_std: float):
-        self.std = new_std
-    def update_step(self, gradient, variable):
-        """Update step given gradient and the associated model variable."""
-        beta_1_power = None
-        beta_2_power = None
-        lr = tf.cast(self.learning_rate, variable.dtype)
-        local_step = tf.cast(self.iterations + 1, variable.dtype)
-        beta_1_power = tf.pow(tf.cast(self.beta_1, variable.dtype), local_step)
-        beta_2_power = tf.pow(tf.cast(self.beta_2, variable.dtype), local_step)
+        Initiator for the class
+        :param sym: Symbol that causes the validator to return false
+        """
+        self.sym = sym
 
-        var_key = self._var_key(variable)
-        m = self._momentums[self._index_dict[var_key]]
-        v = self._velocities[self._index_dict[var_key]]
+    def __call__(self, data: list):
+        """
+        Call function for the validator to check the data
+        :param data: input data to check
+        :return: T/F if the data is good
+        """
+        for i in range(len(data)):
+            data[i] = data[i].replace("Winter", "0").replace("Spring", "1").replace("Summer", "2").replace("Autumn", "3")\
+            .replace("No Holiday", "0").replace("Holiday", "1").replace("Yes", "1").replace("No", "0")
+        return data
+def csv_to_data(cf_name: str,
+                row_limits: tuple,
+                delimiters: tuple = ("\n", " "),
+                dtype=float,
+                name: bin = True,
+                verifier: callable = None):
+    """
+    Opens csv file and reads to 2d nd array, deleting rows the verifier determines unfit.
+    :param cf_name: File name of CSV file
+    :param row_limits: Tuple of range of the rows to return
+    :param delimiters: Tuple of delimiters for reading csv file
+    :param dtype: data type to return
+    :param name: Bin whether to return name row (row[0])
+    :param verifier: Defaults to None. Function to validate rows - delete row if verifier does not return True
+    :return: If name: (NDArray, shape (1, row length), NDArray, shape (n, row length)), If not name: NDArray, shape (n, row length)
+    """
+    #Create an emtpy list and open file in context manager
+    outer_list = []
+    with open(cf_name) as file:
+        #Separate the rows
+        cvr = csv.reader(file, delimiter=delimiters[0])
+        for row in cvr:
+            #Separate the columns
+            cvr_2 = csv.reader(row, delimiter=delimiters[1])
+            inner_list = []
+            #Check if the row is valid
+            if verifier:
+                if verifier(row):
+                    for row_2 in cvr_2:
+                        inner_list.append(verifier(row_2))
+                    outer_list.append(inner_list[0][row_limits[0]:row_limits[1]])
+            else:  #If no verifier return all rows
+                for row_2 in cvr_2:
+                    inner_list.append(row_2)
+                outer_list.append(inner_list[0][row_limits[0]:row_limits[1]])
 
-        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std)**self.chaos_punish
+    if name:  #return the data
+        names = np.asarray(outer_list[:name], dtype=str)
+        data = np.asarray(outer_list[name+1:], dtype=dtype)
+        return names, data
+    return np.asarray(outer_list, dtype=dtype)
 
-        if isinstance(gradient, tf.IndexedSlices):
-            # Sparse gradients.
-            m.assign_add(-m * (1 - self.beta_1))
-            m.scatter_add(
-                tf.IndexedSlices(
-                    gradient.values * (1 - self.beta_1), gradient.indices
-                )
-            )
-            v.assign_add(-v * (1 - self.beta_2))
-            v.scatter_add(
-                tf.IndexedSlices(
-                    tf.square(gradient.values) * (1 - self.beta_2),
-                    gradient.indices,
-                )
-            )
-            if self.amsgrad:
-                v_hat = self._velocity_hats[self._index_dict[var_key]]
-                v_hat.assign(tf.maximum(v_hat, v))
-                v = v_hat
-            variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
-        else:
-            # Dense gradients.
-            m.assign_add((gradient - m) * (1 - self.beta_1))
-            v.assign_add((tf.square(gradient) - v) * (1 - self.beta_2))
-            if self.amsgrad:
-                v_hat = self._velocity_hats[self._index_dict[var_key]]
-                v_hat.assign(tf.maximum(v_hat, v))
-                v = v_hat
-            variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
+def homo_csv(file_name, out_name):
+    """
+    Homogenize CSV file and write to a new file (can be the same as the first name)
+    :param file_name: Name of the file to read
+    :param out_name: Name of the file to write to
+    :return: None
+    """
+    #Read the file to string
+    file = open(file_name, "r").read()
 
-    def get_config(self):
-        config = super().get_config()
+    #Replace tabs with space
+    while "\t" in file:
+        file = file.replace("\t", " ")
 
-        config.update(
-            {
-                "learning_rate": self._serialize_hyperparameter(
-                    self._learning_rate
-                ),
-                "beta_1": self.beta_1,
-                "beta_2": self.beta_2,
-                "epsilon": self.epsilon,
-                "amsgrad": self.amsgrad,
-            }
-        )
-        return config
+    #Replace double space with single
+    while "  " in file:
+        file = file.replace("  ", " ")
 
-class MaxAdamCallback(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer"""
-    def __init__(self, optimizer: MaxAdam, num_to_hold):
-        super().__init__()
-        self.optimizer = optimizer
-        self.losses=[]
-        self.hold = num_to_hold
+    with open(out_name, 'w') as out:
+        out.write(file)
 
+def r2_score(y: npt.NDArray, h: npt.NDArray) -> npt.NDArray:
+    """
+    Calculate r squared value
+    :param y: Actual values
+    :param h: Pred Values
+    :return: r^2 score
+    """
+    return 1-np.sum((y-h)**2)/np.sum((y-np.mean(y))**2)
 
-    def _calculate_loss_std(self):
-        std = np.std(self.losses)/np.mean(self.losses)
-        self.optimizer.update_loss(std)
+def min_max_norm(data: npt.NDArray) -> npt.NDArray:
+    """
+    Normalize the data between 0, 1
+    :param data:
+    :return:
+    """
+    return (data-np.min(data))/(np.max(data)-np.min(data))
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.losses.append(logs["loss"])
-        self.losses = self.losses[-self.hold:]
-        self._calculate_loss_std()
+def min_max_norm_v2(data: npt.NDArray, data_2) -> npt.NDArray:
+    """
+    Normalize the data between 0, 1
+    :param data:
+    :return:
+    """
+    return (data_2-np.min(data))/(np.max(data)-np.min(data))
+def make_date(data: npt.NDArray) -> npt.NDArray:
+    """
+    Make date data out of string
+    :return: NDArray
+    """
+    data_out = []
+    for i in data:
+        data_out.append([i[0:1], i[3:4], i[6:10]])
 
+    return np.asarray(data_out)
