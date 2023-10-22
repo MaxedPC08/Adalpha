@@ -122,3 +122,18 @@ def make_date(data: npt.NDArray) -> npt.NDArray:
         data_out.append([i[0:1], i[3:4], i[6:10]])
 
     return np.asarray(data_out)
+
+def make_heatmap(x:npt.NDArray, y:npt.NDArray) -> npt.NDArray:
+    """
+    Makes a 2D heatmap from 2 1D NDArrays
+    Naive implementation. Needs vectorization.
+    :param x: This is the first of 2 1D NDArrays. Must have dtype == int
+    :param y: This is the second 1D NDArrays. Must have dtype == int
+    :return: This is the output value. Has dtype == int
+    """
+    heatmap = np.zeros((np.max(y)+1, np.max(y)+1))
+    for i in range(len(x)):
+        heatmap[x[i], y[i]] = heatmap[x[i], y[i]]+1
+    return heatmap
+
+
