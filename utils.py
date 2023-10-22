@@ -122,3 +122,9 @@ def make_date(data: npt.NDArray) -> npt.NDArray:
         data_out.append([i[0:1], i[3:4], i[6:10]])
 
     return np.asarray(data_out)
+
+def make_heatmap():
+    """
+    TODO: Impliment heatmap function.
+    """
+    pass
