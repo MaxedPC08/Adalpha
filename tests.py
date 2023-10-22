@@ -6,7 +6,6 @@ SPLIT = 0.67
 
 
 def bike_dataset(callback, epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult = 1):
-    print(tf.__version__)
     """
     Main executable for the program
     :return: None
@@ -16,13 +15,11 @@ def bike_dataset(callback, epochs=100, learning_rate=0.01, chaos_punishment=6, m
     _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n","," ))
     date_data = make_date(np.asarray(data)[:, 0])
     data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
-    print(data.shape)
     np.random.shuffle(data)
 
     #Remove non-working days
     mask = (data[:, -1] != 0)
     data = data[mask, :]
-    print(data.shape)
 
     #Split data into test and train data
     y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
@@ -31,7 +28,6 @@ def bike_dataset(callback, epochs=100, learning_rate=0.01, chaos_punishment=6, m
     x_test = x_data[int(x_data.shape[0]*SPLIT):, :]
     y_data = y_data[:int(x_data.shape[0]*SPLIT), :]
     x_data = x_data[:int(x_data.shape[0]*SPLIT), :]
-    print(y_test.shape)
 
     my_optimizer = MA.MaxAdam(learning_rate=learning_rate, chaos_punishment=chaos_punishment, modifier_multiplier=mod_mult)
 
@@ -82,7 +78,7 @@ def bike_dataset(callback, epochs=100, learning_rate=0.01, chaos_punishment=6, m
     plt.plot([0, 3500], [0, 3500], "b-", label="Perfect Precictions")
     plt.legend()
     plt.show()
-    print(f"MaxAdam r squared score: {max_r_2} \n Adam  r  squared  score: {r_2}")
+    print(f"MaxAdam r squared score: {max_r_2}\nAdam r squared score:  {r_2}")
 
 def mnist_test(epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult=1):
     """
