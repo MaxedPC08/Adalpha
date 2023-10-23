@@ -164,3 +164,62 @@ def mnist_test(epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult=1):
     fig.tight_layout()
 
     plt.show()
+
+def bike_dataset_chaos_test(epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], mod_mult=1):
+    """
+    Main executable for the program
+    :return: None
+    """
+    homo_csv(FILE_NAME, FILE_NAME)
+    verifier = String_Verifier()
+    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
+    date_data = make_date(np.asarray(data)[:, 0])
+    data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
+    np.random.shuffle(data)
+
+    # Remove non-working days
+    mask = (data[:, -1] != 0)
+    data = data[mask, :]
+
+    # Split data into test and train data
+    y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
+    x_data = min_max_norm(np.asarray(np.delete(data, 3, 1)))
+    y_test = y_data[int(y_data.shape[0] * SPLIT):, :]
+    x_test = x_data[int(x_data.shape[0] * SPLIT):, :]
+    y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
+    x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
+    max_r_2 = []
+
+    # Create Model
+    input_layer = tf.keras.layers.Input(shape=(15))
+    normalized_in = tf.keras.layers.BatchNormalization()(input_layer)
+    model = tf.keras.layers.Reshape((15, 1))(normalized_in)
+    model = tf.keras.layers.Conv1D(96, 5, activation="relu")(model)
+    model = tf.keras.layers.Conv1D(64, 5, activation="relu")(model)
+    model = tf.keras.layers.Flatten()(model)
+
+    model = tf.keras.layers.concatenate((normalized_in, model))
+    model = tf.keras.layers.Dense(1, activation="relu")(model)
+    model = tf.keras.Model(input_layer, model)
+
+
+    for val in chaos_punishment:
+        my_optimizer = MA.MaxAdam(learning_rate=learning_rate, chaos_punishment=val,
+                                  modifier_multiplier=mod_mult)
+        # Train with MaxAdam
+        callbacks = [MA.MaxAdamCallback(my_optimizer, 20)]
+        model.compile(optimizer=my_optimizer, loss="mse")
+        history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
+                            verbose=False)
+        max_y_pred = model.predict(x_test, verbose=False)
+        max_r_2.append(r2_score(max_y_pred, y_test))
+
+    # Graphing the MaxAdam Results
+    plt.xlabel("Chaos Punishment")
+    plt.ylabel("Loss Magnitude")
+    plt.title(f"R Squared vs Chaos Punishment")
+    plt.plot(chaos_punishment, max_r_2, "r-", label="MaxAdam R2")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
