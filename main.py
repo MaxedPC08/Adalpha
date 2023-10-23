@@ -9,5 +9,4 @@ PY 3.10
 from tests import *
 
 if __name__ == "__main__":
-    bike_dataset_chaos_test()
- 
+    mnist_test(5, 0.01, 5)
