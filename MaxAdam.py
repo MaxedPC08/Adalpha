@@ -206,23 +206,58 @@ class MaxAdam(Optimizer):
         )
         return config
 
-class MaxAdamCallbackLegacy(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer"""
-    def __init__(self, optimizer: MaxAdam, num_to_hold):
-        super().__init__()
-        self.optimizer = optimizer
-        self.losses=[]
-        self.hold = num_to_hold
+class AdAlpha_Momentum(MaxAdam):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
+    def _m_activ(self, m):
+        return (tf.pow(tf.abs(m), 3)+tf.pow(tf.reduce_mean(m), 2)*0.5)/(tf.pow(m, 2)+tf.reduce_mean(m))
 
-    def _calculate_loss_std(self):
-        std = np.std(self.losses)/np.mean(self.losses)
-        self.optimizer.update_loss(std)
+    def update_step(self, gradient, variable):
+        """Update step given gradient and the associated model variable."""
+        beta_1_power = None
+        beta_2_power = None
+        lr = tf.cast(self.learning_rate, variable.dtype)
+        local_step = tf.cast(self.iterations + 1, variable.dtype)
+        beta_1_power = tf.pow(tf.cast(self.beta_1, variable.dtype), local_step)
+        beta_2_power = tf.pow(tf.cast(self.beta_2, variable.dtype), local_step)
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.losses.append(logs["loss"])
-        self.losses = self.losses[-self.hold:]
-        self._calculate_loss_std()
+        var_key = self._var_key(variable)
+        m = self._momentums[self._index_dict[var_key]]
+        v = self._velocities[self._index_dict[var_key]]
+
+        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.mod_mult)**self.chaos_punish
+
+        if isinstance(gradient, tf.IndexedSlices):
+            # Sparse gradients.
+            m.assign_add(-self._m_activ(m) * (1 - self.beta_1))
+            m.scatter_add(
+                tf.IndexedSlices(
+                    gradient.values * (1 - self.beta_1), gradient.indices
+                )
+            )
+            v.assign_add(-self._m_activ(v) * (1 - self.beta_2))
+            v.scatter_add(
+                tf.IndexedSlices(
+                    tf.square(gradient.values) * (1 - self.beta_2),
+                    gradient.indices,
+                )
+            )
+            if self.amsgrad:
+                v_hat = self._velocity_hats[self._index_dict[var_key]]
+                v_hat.assign(tf.maximum(v_hat, v))
+                v = v_hat
+            variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
+        else:
+            # Dense gradients.
+            m.assign_add((gradient - m) * (1 - self.beta_1))
+            v.assign_add((tf.square(gradient) - v) * (1 - self.beta_2))
+            if self.amsgrad:
+                v_hat = self._velocity_hats[self._index_dict[var_key]]
+                v_hat.assign(tf.maximum(v_hat, v))
+                v = v_hat
+            variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
+
 
 class MaxAdamCallback(tf.keras.callbacks.Callback):
     """A class that updates the loss of the Max_Adam optimizer"""
