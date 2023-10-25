@@ -11,5 +11,7 @@ PY 3.10
 from tests import *
 
 if __name__ == "__main__":
-    bike_dataset_v2(MA.MaxAdamCallback)
+    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=5)
+    #bike_dataset(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=100, chaos_punishment=8)
+    mnist_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, chaos_punishment=8)
  

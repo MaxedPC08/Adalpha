@@ -72,7 +72,6 @@ class MaxAdam(Optimizer):
         self,
         learning_rate=0.001,
         chaos_punishment=1,
-        modifier_multiplier=1,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-7,
@@ -106,7 +105,6 @@ class MaxAdam(Optimizer):
         self.epsilon = epsilon
         self.amsgrad = amsgrad
         self.chaos_punish = chaos_punishment
-        self.mod_mult = modifier_multiplier
         self.std = 0.0
 
     def build(self, var_list):
@@ -158,7 +156,7 @@ class MaxAdam(Optimizer):
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
 
-        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.mod_mult)**self.chaos_punish
+        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.chaos_punish)**self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
@@ -226,7 +224,7 @@ class AdAlpha_Momentum(MaxAdam):
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
 
-        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.mod_mult)**self.chaos_punish
+        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.chaos_punish)**self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
