@@ -19,7 +19,6 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     #Remove non-working days
     mask = (data[:, -1] != 0)
     data = data[mask, :]
-
     #Split data into test and train data
     y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
     x_data = min_max_norm(np.asarray(np.delete(data, 3, 1)))
@@ -55,7 +54,6 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     plt.plot(history.history["val_loss"], "y-", label="MaxAdam Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
     max_r_2 = r2_score(max_y_pred, y_test)
-
     #Train with Adam
     model = tf.keras.models.clone_model(model)
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss="mse")
@@ -259,4 +257,82 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     plt.grid(True)
     plt.show()
 
+def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
+    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
+    input_layer = tf.keras.layers.Input((32, 32, 3))
+    model = tf.keras.layers.BatchNormalization()(input_layer)
+    model = tf.keras.layers.Conv2D(64, (5, 5), activation="relu")(model)
+    model = tf.keras.layers.MaxPool2D(2)(model)
+    model = tf.keras.layers.Conv2D(64, (5, 5), activation="relu")(model)
+    model = tf.keras.layers.Conv2D(32, (5, 5), activation="relu")(model)
+    model = tf.keras.layers.Flatten()(model)
+    output = tf.keras.layers.Dense(10, activation="softmax")(model)
+
+    model = tf.keras.Model(input_layer, output)
+
+    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+
+    # Train with MaxAdam
+    callbacks = [callback(my_optimizer, 20)]
+    model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
+                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, callbacks=callbacks, validation_split=0.2,
+                        verbose=False)
+    # Graphing the MaxAdam Results
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss Magnitude")
+    plt.title(f"Model Fitting Results at lr={learning_rate} on CIFAR")
+    plt.yscale("log")
+    plt.plot(history.history["loss"], "r-", label="MaxAdam Loss")
+    plt.plot(history.history["val_loss"], "y-", label="MaxAdam Val Loss")
+    max_y_pred = model.predict(x_test, verbose=False)
+    print("Evaluating AdAlpha")
+    model.evaluate(x_test, y_test)
+    # Train with Adam
+    model = tf.keras.models.clone_model(model)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                  loss=tf.keras.losses.sparse_categorical_crossentropy,
+                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, validation_split=0.2, verbose=False)
+    plt.plot(history.history["loss"], "g-", label="Adam Loss")
+    plt.plot(history.history["val_loss"], "b-", label="Adam Val Loss")
+    plt.legend()
+    plt.show()
+    y_pred = model.predict(x_test, verbose=False)
+    print("Evaluating Adam")
+    model.evaluate(x_test, y_test)
+    # ====================
+    # USE MODEL TO PREDICT and create a scatterplot of the y and y_pred
+    labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    heatmap_max = make_heatmap(np.argmax(max_y_pred, 1), y_test)
+
+    im = ax1.imshow(heatmap_max)
+
+    # Show all ticks and label them with the respective list entries
+    ax1.set_xticks(np.arange(len(labels)), labels=labels)
+    ax1.set_yticks(np.arange(len(labels)), labels=labels)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax1.get_xticklabels(), ha="right", rotation_mode="anchor")
+
+    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from MaxAdam")
+
+    heatmap = make_heatmap(np.argmax(y_pred, 1), y_test)
+
+    im = ax2.imshow(heatmap)
+
+    # Show all ticks and label them with the respective list entries
+    ax2.set_xticks(np.arange(len(labels)), labels=labels)
+    ax2.set_yticks(np.arange(len(labels)), labels=labels)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax2.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam")
+    fig.tight_layout()
+
+    plt.show()
