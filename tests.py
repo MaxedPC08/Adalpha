@@ -1,11 +1,10 @@
 from utils import *
-import MaxAdam as MA
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 
 
-def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult = 1):
+def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
     """
     Main executable for the program
     :return: None
@@ -29,7 +28,7 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     y_data = y_data[:int(x_data.shape[0]*SPLIT), :]
     x_data = x_data[:int(x_data.shape[0]*SPLIT), :]
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment, modifier_multiplier=mod_mult)
+    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
     #Create Model
     input_layer = tf.keras.layers.Input(shape=(15))
@@ -80,7 +79,7 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     plt.show()
     print(f"MaxAdam r squared score: {max_r_2}\nAdam r squared score:  {r_2}")
 
-def mnist_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, mod_mult=1):
+def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
     """
     Main executable for the program
     :return: None
@@ -99,7 +98,7 @@ def mnist_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punish
 
     model = tf.keras.Model(input_layer, output)
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment, modifier_multiplier=mod_mult)
+    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
     #Train with MaxAdam
     callbacks = [callback(my_optimizer, 20)]
@@ -165,7 +164,7 @@ def mnist_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punish
 
     plt.show()
 
-def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], mod_mult=1):
+def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
@@ -204,13 +203,12 @@ def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, 
 
 
     for val in chaos_punishment:
-        my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val,
-                                  modifier_multiplier=mod_mult)
+        my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val)
         # Train with MaxAdam
         callbacks = [callback(my_optimizer, 20)]
         model.compile(optimizer=my_optimizer, loss="mse")
-        history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
-                            verbose=False)
+        model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
+                  verbose=False)
         max_y_pred = model.predict(x_test, verbose=False)
         max_r_2.append(r2_score(max_y_pred, y_test))
 
@@ -223,7 +221,7 @@ def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, 
     plt.grid(True)
     plt.show()
 
-def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], mod_mult=1):
+def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
@@ -244,14 +242,13 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
 
     accuracy=[]
     for val in chaos_punishment:
-        my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val,
-                                  modifier_multiplier=mod_mult)
+        my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val)
         # Train with MaxAdam
         callbacks = [callback(my_optimizer, 20)]
         model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-        history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
-                            verbose=False)
+        model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
+                  verbose=False)
         accuracy.append(model.evaluate(x_test, y_test, return_dict=True)['sparse_categorical_accuracy'])
 
     # Graphing the MaxAdam Results

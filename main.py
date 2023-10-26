@@ -9,9 +9,10 @@ PY 3.10
 """
 
 from tests import *
+import MaxAdam as MA
 
 if __name__ == "__main__":
-    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=5)
-    #bike_dataset(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=100, chaos_punishment=8)
-    mnist_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, chaos_punishment=8)
- 
+    bike_dataset_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, learning_rate=0.01)
+    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum)
+    bike_dataset_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, learning_rate=0.01)
+    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum)
