@@ -10,5 +10,6 @@ from tests import *
 import MaxAdam as MA
 
 if __name__ == "__main__":
-    bike_dataset(MA.LossSlopeCallback, MA.AdAlpha_Momentum, learning_rate=1, chaos_punishment=12)
- 
+    for _ in range(10):
+        bike_dataset(MA.LossSlopeCallback, MA.AdAlpha_Momentum, learning_rate=0.1, chaos_punishment=6, epochs=20)
+

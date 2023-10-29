@@ -210,7 +210,7 @@ class AdAlpha_Momentum(MaxAdam):
         super().__init__(**kwargs)
 
     def _m_activ(self, m):
-        return (tf.pow(tf.abs(m), 3)+tf.pow(tf.reduce_mean(m), 2)*0.5)/(tf.pow(m, 2)+tf.reduce_mean(m))
+        return (tf.pow(tf.abs(m), 3)+tf.pow(tf.reduce_mean(m), 2)*2)/(tf.pow(m, 2)+np.sqrt(tf.reduce_mean(m)))
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
@@ -286,14 +286,14 @@ class LossSlopeCallback(tf.keras.callbacks.Callback):
         self.losses = []
         self.hold = num_to_hold
         self.std = 0.0
-        self.std_error = 0.0
+        self.r2 = 0.0
 
     def _calculate_loss_std(self):
-        val, _, _, _, std_error = sp.stats.linregress(np.arange(0, len(self.losses)), np.asarray(self.losses))
-        std_error = np.divide(std_error, np.mean(self.losses), out=np.zeros_like(std_error), where=std_error != 0)
-        pc_std_error = np.divide(std_error - self.std_error, self.std_error, out=np.zeros_like(self.std_error), where=self.std_error != 0)
-        self.std_error = std_error
-        self.optimizer.update_loss(pc_std_error)
+        val, _, _, r2, _ = sp.stats.linregress(np.arange(0, len(self.losses)), np.asarray(self.losses))
+        r2 = np.divide(r2, np.mean(self.losses), out=np.zeros_like(r2), where=r2 != 0)
+        pc_r2 = np.divide(r2 - self.r2, self.r2, out=np.zeros_like(self.r2), where=self.r2 != 0)
+        self.r2 = r2
+        self.optimizer.update_loss(-pc_r2)
 
     def on_train_batch_end(self, batch, logs=None):
         self.losses.append(logs["loss"])
