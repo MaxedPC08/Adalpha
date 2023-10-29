@@ -3,6 +3,7 @@ from keras.optimizers import Optimizer
 from keras.src.saving.object_registration import register_keras_serializable
 from tensorflow.python.util.tf_export import keras_export
 import numpy as np
+import scipy as sp
 
 
 @keras_export(
@@ -275,3 +276,46 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
         self.losses.append(logs["loss"])
         self.losses = self.losses[-self.hold:]
         self._calculate_loss_std()
+
+class LossSlopeCallback(tf.keras.callbacks.Callback):
+    """A class that updates the loss of the Max_Adam optimizer"""
+
+    def __init__(self, optimizer: MaxAdam, num_to_hold):
+        super().__init__()
+        self.optimizer = optimizer
+        self.losses = []
+        self.hold = num_to_hold
+        self.std = 0.0
+        self.std_error = 0.0
+
+    def _calculate_loss_std(self):
+        val, _, _, _, std_error = sp.stats.linregress(np.arange(0, len(self.losses)), np.asarray(self.losses))
+        std_error = np.divide(std_error, np.mean(self.losses), out=np.zeros_like(std_error), where=std_error != 0)
+        pc_std_error = np.divide(std_error - self.std_error, self.std_error, out=np.zeros_like(self.std_error), where=self.std_error != 0)
+        self.std_error = std_error
+        self.optimizer.update_loss(pc_std_error)
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.losses.append(logs["loss"])
+        self.losses = self.losses[-self.hold:]
+        self._calculate_loss_std()
+
+
+class OneCallback(tf.keras.callbacks.Callback):
+    """A class that updates the loss of the Max_Adam optimizer"""
+
+    def __init__(self, optimizer: MaxAdam, num_to_hold):
+        super().__init__()
+        self.optimizer = optimizer
+        self.losses = []
+        self.hold = num_to_hold
+        self.std = 0.0
+
+    def _calculate_loss_std(self):
+        self.optimizer.update_loss(0.0)
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.losses.append(logs["loss"])
+        self.losses = self.losses[-self.hold:]
+        self._calculate_loss_std()
+
