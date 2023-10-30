@@ -210,7 +210,7 @@ class AdAlpha_Momentum(MaxAdam):
         super().__init__(**kwargs)
 
     def _m_activ(self, m):
-        return (tf.pow(tf.abs(m), 3)+tf.pow(tf.reduce_mean(m), 2)*2)/(tf.pow(m, 2)+np.sqrt(tf.reduce_mean(m)))
+        return (tf.pow(tf.abs(m), 2)+tf.pow(tf.reduce_mean(m), 2))/(m+tf.reduce_mean(m))
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
@@ -224,21 +224,20 @@ class AdAlpha_Momentum(MaxAdam):
         var_key = self._var_key(variable)
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
-
         alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (1-self.std*self.chaos_punish)**self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
-            m.assign_add(-self._m_activ(m) * (1 - self.beta_1))
+            m.assign_add(-self._m_activ(m * (1 - self.beta_1)))
             m.scatter_add(
                 tf.IndexedSlices(
-                    gradient.values * (1 - self.beta_1), gradient.indices
+                    self._m_activ(gradient.values * (1 - self.beta_1)), gradient.indices
                 )
             )
-            v.assign_add(-self._m_activ(v) * (1 - self.beta_2))
+            v.assign_add(-self._m_activ(v * (1 - self.beta_2)))
             v.scatter_add(
                 tf.IndexedSlices(
-                    tf.square(gradient.values) * (1 - self.beta_2),
+                    self._m_activ(tf.square(gradient.values) * (1 - self.beta_2)),
                     gradient.indices,
                 )
             )
@@ -249,8 +248,8 @@ class AdAlpha_Momentum(MaxAdam):
             variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
         else:
             # Dense gradients.
-            m.assign_add((gradient - m) * (1 - self.beta_1))
-            v.assign_add((tf.square(gradient) - v) * (1 - self.beta_2))
+            m.assign_add(self._m_activ((gradient - m) * (1 - self.beta_1)))
+            v.assign_add(self._m_activ(tf.square(gradient) - v * (1 - self.beta_2)))
             if self.amsgrad:
                 v_hat = self._velocity_hats[self._index_dict[var_key]]
                 v_hat.assign(tf.maximum(v_hat, v))
