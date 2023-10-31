@@ -41,17 +41,17 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     model = tf.keras.layers.Dense(1, activation="relu")(model)
     model = tf.keras.Model(input_layer, model)
 
-    #Train with MaxAdam
+    #Train with Adalpha
     callbacks = [callback(my_optimizer, 20)]
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2, verbose=False)
-    # Graphing the MaxAdam Results
+    # Graphing the Adalpha Results
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
     plt.yscale("log")
-    plt.plot(history.history["loss"], "r-", label="MaxAdam Loss")
-    plt.plot(history.history["val_loss"], "y-", label="MaxAdam Val Loss")
+    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
     max_r_2 = r2_score(max_y_pred, y_test)
     #Train with Adam
@@ -71,11 +71,11 @@ def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_puni
     plt.xlabel("Training Data")
     plt.ylabel("Model Data")
     plt.plot(y_test, y_pred, "g.", label="Adam Predictions")
-    plt.plot(y_test, max_y_pred, "r.", label="MaxAdam Predictions")
+    plt.plot(y_test, max_y_pred, "r.", label="Adalpha Predictions")
     plt.plot([0, 3500], [0, 3500], "b-", label="Perfect Precictions")
     plt.legend()
     plt.show()
-    print(f"MaxAdam r squared score: {max_r_2}\nAdam r squared score:  {r_2}")
+    print(f"Adalpha r squared score: {max_r_2}\nAdam r squared score:  {r_2}")
 
 def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
     """
@@ -98,19 +98,19 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
 
     my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
-    #Train with MaxAdam
+    #Train with Adalpha
     callbacks = [callback(my_optimizer, 20)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy, metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2, verbose=False)
-    # Graphing the MaxAdam Results
+    # Graphing the Adalpha Results
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
     plt.yscale("log")
-    plt.plot(history.history["loss"], "r-", label="MaxAdam Loss")
-    plt.plot(history.history["val_loss"], "y-", label="MaxAdam Val Loss")
+    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating MaxAdam")
+    print("Evaluating Adalpha")
     model.evaluate(x_test, y_test)
     #Train with Adam
     model = tf.keras.models.clone_model(model)
@@ -143,7 +143,7 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     # Loop over data dimensions and create text annotations.
 
 
-    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from MaxAdam")
+    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adalpha")
 
     heatmap = make_heatmap(np.argmax(y_pred, 1), y_test)
 
@@ -202,7 +202,7 @@ def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, 
 
     for val in chaos_punishment:
         my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val)
-        # Train with MaxAdam
+        # Train with Adalpha
         callbacks = [callback(my_optimizer, 20)]
         model.compile(optimizer=my_optimizer, loss="mse")
         model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
@@ -210,11 +210,11 @@ def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, 
         max_y_pred = model.predict(x_test, verbose=False)
         max_r_2.append(r2_score(max_y_pred, y_test))
 
-    # Graphing the MaxAdam Results
+    # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss Magnitude")
     plt.title(f"R Squared vs Chaos Punishment")
-    plt.plot(chaos_punishment, max_r_2, "r-", label="MaxAdam R2")
+    plt.plot(chaos_punishment, max_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -241,7 +241,7 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     accuracy=[]
     for val in chaos_punishment:
         my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=val)
-        # Train with MaxAdam
+        # Train with Adalpha
         callbacks = [callback(my_optimizer, 20)]
         model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
@@ -249,11 +249,11 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
                   verbose=False)
         accuracy.append(model.evaluate(x_test, y_test, return_dict=True)['sparse_categorical_accuracy'])
 
-    # Graphing the MaxAdam Results
+    # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Accuracy")
     plt.title(f"Accuracy vs Chaos Punishment")
-    plt.plot(chaos_punishment, accuracy, "r-", label="MaxAdam Accuracy")
+    plt.plot(chaos_punishment, accuracy, "r-", label="Adalpha Accuracy")
     plt.grid(True)
     plt.show()
 
@@ -273,19 +273,19 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
 
     my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
-    # Train with MaxAdam
+    # Train with Adalpha
     callbacks = [callback(my_optimizer, 20)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
-    # Graphing the MaxAdam Results
+    # Graphing the Adalpha Results
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on CIFAR")
     plt.yscale("log")
-    plt.plot(history.history["loss"], "r-", label="MaxAdam Loss")
-    plt.plot(history.history["val_loss"], "y-", label="MaxAdam Val Loss")
+    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
     print("Evaluating AdAlpha")
     model.evaluate(x_test, y_test)
@@ -318,7 +318,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     # Rotate the tick labels and set their alignment.
     plt.setp(ax1.get_xticklabels(), ha="right", rotation_mode="anchor")
 
-    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from MaxAdam")
+    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adalpha")
 
     heatmap = make_heatmap(np.argmax(y_pred, 1), y_test)
 
