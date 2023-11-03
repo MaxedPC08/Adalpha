@@ -51,7 +51,6 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    plt.yscale("log")
     plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
@@ -69,7 +68,7 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
 
     y_pred = model.predict(x_test, verbose=False)
     r_2 = r2_score(y_pred, y_test)
-    plt.title(f"Predictions vs Actual at lr={learning_rate}")
+    plt.title(f"Predictions vs Actual at lr={learning_rate}\nOver {epochs} epochs")
     plt.xlabel("Training Data")
     plt.ylabel("Model Data")
     plt.plot(y_test, y_pred, "g.", label="Adam Predictions")
@@ -77,7 +76,8 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     plt.plot([0, 3500], [0, 3500], "b-", label="Perfect Precictions")
     plt.legend()
     plt.show()
-    print(f"Adalpha r squared score: {max_r_2}\nAdam r squared score:  {r_2}")
+    print(f"Adalpha r squared score: {max_r_2}\nAdam r squared score: {r_2}")
+    return max_r_2, r_2
 
 def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
     """
@@ -112,7 +112,7 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
     print("Evaluating Adalpha")
-    model.evaluate(x_test, y_test)
+    max_acc = model.evaluate(x_test, y_test)[1]
     #Train with Adam
     model = tf.keras.models.clone_model(model)
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss=tf.keras.losses.sparse_categorical_crossentropy, metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
@@ -123,7 +123,7 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.show()
     y_pred = model.predict(x_test, verbose=False)
     print("Evaluating Adam")
-    model.evaluate(x_test, y_test)
+    acc = model.evaluate(x_test, y_test)[1]
     # ====================
     # USE MODEL TO PREDICT and create a scatterplot of the y and y_pred
     labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -158,10 +158,11 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.setp(ax2.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
 
-    ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam")
+    ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam\nOver {epochs} epochs")
     fig.tight_layout()
 
     plt.show()
+    return max_acc, acc
 
 def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
@@ -214,7 +215,7 @@ def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_pu
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss Magnitude")
-    plt.title(f"R Squared vs Chaos Punishment")
+    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
     plt.plot(chaos_punishment, max_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
@@ -253,7 +254,7 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Accuracy")
-    plt.title(f"Accuracy vs Chaos Punishment")
+    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
     plt.plot(chaos_punishment, accuracy, "r-", label="Adalpha Accuracy")
     plt.grid(True)
     plt.show()
@@ -333,7 +334,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.setp(ax2.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
 
-    ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam")
+    ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam\nOver {epochs} epochs")
     fig.tight_layout()
 
     plt.show()
