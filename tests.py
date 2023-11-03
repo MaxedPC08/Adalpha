@@ -1,10 +1,12 @@
+import matplotlib.pyplot as plt
+
 from utils import *
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 
 
-def bike_dataset(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
     """
     Main executable for the program
     :return: None
@@ -106,7 +108,6 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.yscale("log")
     plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)
@@ -162,7 +163,7 @@ def mnist_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
 
     plt.show()
 
-def bike_dataset_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
@@ -267,6 +268,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     model = tf.keras.layers.Conv2D(64, (5, 5), activation="relu")(model)
     model = tf.keras.layers.Conv2D(32, (5, 5), activation="relu")(model)
     model = tf.keras.layers.Flatten()(model)
+    model = tf.keras.layers.Dense(512, activation="relu")(model)
     output = tf.keras.layers.Dense(10, activation="softmax")(model)
 
     model = tf.keras.Model(input_layer, output)
@@ -283,7 +285,6 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.xlabel("Epoch")
     plt.ylabel("Loss Magnitude")
     plt.title(f"Model Fitting Results at lr={learning_rate} on CIFAR")
-    plt.yscale("log")
     plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     max_y_pred = model.predict(x_test, verbose=False)

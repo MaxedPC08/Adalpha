@@ -233,8 +233,8 @@ class AdAlpha_Momentum(MaxAdam):
         :praram m: the value being activated, any Tensorflow.math compatible Tensorflow Tensor
         :return: the activated value - Tensorflow Tensor of same input type
         """
-        return m * tf.pow(1.91 - tf.math.divide_no_nan((tf.square(m) - tf.square(0.01 * tf.abs(tf.abs(tf.reduce_mean(m)) + tf.math.reduce_std(m)))),
-                                                 (tf.square(m) + 0.1 * tf.square(tf.abs(tf.reduce_mean(m)) + tf.math.reduce_std(m)))), 2)
+        return m * tf.pow(2 - tf.math.divide_no_nan((tf.square(m) - tf.square(0.01 * tf.abs(tf.abs(tf.reduce_mean(m)) - tf.math.reduce_std(m)))),
+                                                 (tf.square(m) + 0.1 * tf.square(tf.abs(tf.reduce_mean(m)) - tf.math.reduce_std(m)))), 2)
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
