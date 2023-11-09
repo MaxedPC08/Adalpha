@@ -45,12 +45,9 @@ def adam_train_bike(epochs=100, learning_rate=0.01):
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, validation_split=0.2,
                         verbose=False)
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
-    plt.show()
+
+    plt.plot(history.history["loss"], "r-", label="Adam Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
@@ -97,18 +94,20 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
-    plt.show()
+
+    plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "b-", label="Adalpha Val Loss")
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
 def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
     max_r_2, max_y_pred, max_y_test = adalpha_train_bike(callback, optimizer, epochs, learning_rate, chaos_punishment)
     r_2, y_pred, y_test= adam_train_bike(epochs, learning_rate)
+    plt.legend()
+    plt.show()
 
     plt.title(f"Predictions vs Actual at lr={learning_rate}\nOver {epochs} epochs")
     plt.xlabel("Training Data")
@@ -119,6 +118,7 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     plt.legend()
     plt.show()
     print(f"Adalpha r squared score: {max_r_2}\nAdam r squared score: {r_2}")
+    return max_r_2, r_2
 
 def adam_train_mnist(epochs=10, learning_rate=0.01):
     """
@@ -148,12 +148,12 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
+    plt.plot(history.history["loss"], "r-", label="Adam Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
     plt.legend()
     plt.show()
     y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating Adalpha")
+    print("Evaluating Adam")
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
 def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
