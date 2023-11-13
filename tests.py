@@ -104,7 +104,7 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    max_r_2, max_y_pred, max_y_test = adalpha_train_bike(callback, optimizer, epochs, learning_rate, chaos_punishment)
+    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback, optimizer, epochs, learning_rate, chaos_punishment)
     r_2, y_pred, y_test= adam_train_bike(epochs, learning_rate)
     plt.legend()
     plt.show()
@@ -113,12 +113,20 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     plt.xlabel("Training Data")
     plt.ylabel("Model Data")
     plt.plot(y_test, y_pred, "g.", label="Adam Predictions")
-    plt.plot(max_y_test, max_y_pred, "r.", label="Adalpha Predictions")
+    plt.plot(adalpha_y_test, adalpha_y_pred, "r.", label="Adalpha Predictions")
     plt.plot([0, 3500], [0, 3500], "b-", label="Perfect Precictions")
     plt.legend()
     plt.show()
-    print(f"Adalpha r squared score: {max_r_2}\nAdam r squared score: {r_2}")
-    return max_r_2, r_2
+    print(f"Adalpha r squared score: {adalpha_r_2}\nAdam r squared score: {r_2}")
+    return adalpha_r_2, r_2
+
+def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10):
+    losses = []
+    for i in range(tests):
+        losses.append(
+            bike_test(callback, optimizer, epochs, learning_rate, chaos_punishment))
+
+    print(np.asarray(losses))
 
 def adam_train_mnist(epochs=10, learning_rate=0.01):
     """
@@ -191,23 +199,23 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
     plt.legend()
     plt.show()
-    max_y_pred = model.predict(x_test, verbose=False)
+    adalpha_y_pred = model.predict(x_test, verbose=False)
     print("Evaluating Adalpha")
-    return model.evaluate(x_test, y_test)[1], max_y_pred, y_test
+    return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
 
 def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishment=6):
     """
     Main executable for the program
     :return: None
     """
-    _, max_y_pred, max_y_test = adalpha_train_mnist(callback, optimizer, epochs, learning_rate, chaos_punishment)
-    _, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback, optimizer, epochs, learning_rate, chaos_punishment)
+    acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
     # ====================
     # USE MODEL TO PREDICT and create a scatterplot of the y and y_pred
     labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
-    heatmap_max = make_heatmap(np.argmax(max_y_pred, 1), max_y_test)
+    heatmap_max = make_heatmap(np.argmax(adalpha_y_pred, 1), adalpha_y_test)
 
     im = ax1.imshow(heatmap_max)
 
@@ -240,6 +248,15 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishme
     fig.tight_layout()
     plt.legend()
     plt.show()
+    return adalpha_acc
+    
+def mnist_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10):
+    losses = []
+    for i in range(tests):
+        losses.append(
+            mnist_test(callback, optimizer, epochs, learning_rate, chaos_punishment))
+
+    print(np.asarray(losses))
 
 
 def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
@@ -247,15 +264,15 @@ def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_pu
     Main executable for the program
     :return: None
     """
-    max_r_2 = []
+    adalpha_r_2 = []
     for val in chaos_punishment:
-        max_r_2.append(adalpha_train_bike(callback, optimizer, epochs, learning_rate, val)[0])
+        adalpha_r_2.append(adalpha_train_bike(callback, optimizer, epochs, learning_rate, val)[0])
 
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
     plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, max_r_2, "r-", label="Adalpha R2")
+    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -265,15 +282,15 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     Main executable for the program
     :return: None
     """
-    max_r_2 = []
+    adalpha_r_2 = []
     for val in chaos_punishment:
-        max_r_2.append(adalpha_train_mnist(callback, optimizer, epochs, learning_rate, val)[0])
+        adalpha_r_2.append(adalpha_train_mnist(callback, optimizer, epochs, learning_rate, val)[0])
 
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
     plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, max_r_2, "r-", label="Adalpha R2")
+    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -307,7 +324,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     plt.title(f"Model Fitting Results at lr={learning_rate} on CIFAR")
     plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
-    max_y_pred = model.predict(x_test, verbose=False)
+    adalpha_y_pred = model.predict(x_test, verbose=False)
     print("Evaluating AdAlpha")
     model.evaluate(x_test, y_test)
     # Train with Adam
@@ -328,7 +345,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
-    heatmap_max = make_heatmap(np.argmax(max_y_pred, 1), y_test)
+    heatmap_max = make_heatmap(np.argmax(adalpha_y_pred, 1), y_test)
 
     im = ax1.imshow(heatmap_max)
 
