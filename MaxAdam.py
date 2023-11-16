@@ -295,6 +295,7 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
     def _calculate_loss_std(self):
         std = np.divide(np.std(self.losses) / np.mean(self.losses) - self.std, self.std, out=np.zeros_like(self.std),
                         where=self.std != 0)
+        self.std = np.std(self.losses) / np.mean(self.losses) - self.std
         self.optimizer.update_loss(std)
 
     def on_train_batch_end(self, batch, logs=None):
