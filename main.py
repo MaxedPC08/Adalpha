@@ -11,4 +11,4 @@ import MaxAdam as MA
 from gan_test import *
 
 if __name__ == "__main__":
-    mnist_multiple_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=5, learning_rate=0.01, chaos_punishment=6)
+    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=20, learning_rate=0.01)
