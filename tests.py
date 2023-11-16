@@ -159,7 +159,6 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
     plt.plot(history.history["loss"], "r-", label="Adam Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
     plt.legend()
-    plt.show()
     y_pred = model.predict(x_test, verbose=False)
     print("Evaluating Adam")
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
@@ -195,10 +194,9 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
+    plt.plot(history.history["loss"], "b-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "g-", label="Adalpha Val Loss")
     plt.legend()
-    plt.show()
     adalpha_y_pred = model.predict(x_test, verbose=False)
     print("Evaluating Adalpha")
     return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
@@ -210,6 +208,7 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishme
     """
     adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback, optimizer, epochs, learning_rate, chaos_punishment)
     acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
+    plt.show()
     # ====================
     # USE MODEL TO PREDICT and create a scatterplot of the y and y_pred
     labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -246,7 +245,6 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishme
 
     ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam\nOver {epochs} epochs")
     fig.tight_layout()
-    plt.legend()
     plt.show()
     return adalpha_acc
     
