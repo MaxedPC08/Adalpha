@@ -249,7 +249,7 @@ class AdAlpha_Momentum(MaxAdam):
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
         alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (
-                    1 - self.std * self.chaos_punish) ** self.chaos_punish
+                    1 - self.std) ** self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
