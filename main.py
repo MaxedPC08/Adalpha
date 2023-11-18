@@ -7,8 +7,8 @@ PY 3.10
 """
 
 from tests import *
-import MaxAdam as MA
-from gan_test import *
+import Adalpha as AA
 
 if __name__ == "__main__":
-    mnist_chaos_test(MA.MaxAdamCallback, MA.AdAlpha_Momentum, epochs=20, learning_rate=0.01)
+    adalpha_train_mnist(AA.Adalpha_Plot, AA.AdAlpha_Momentum, epochs=1, learning_rate=0.01, chaos_punishment=2)
+

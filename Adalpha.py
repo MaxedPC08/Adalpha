@@ -1,9 +1,8 @@
 import tensorflow as tf
 from keras.optimizers import Optimizer
-from keras.src.saving.object_registration import register_keras_serializable
 from tensorflow.python.util.tf_export import keras_export
 import numpy as np
-import scipy as sp
+import matplotlib.pyplot as plt
 
 
 @keras_export(
@@ -73,6 +72,7 @@ class MaxAdam(Optimizer):
             self,
             learning_rate=0.001,
             chaos_punishment=1,
+            alpha_ema_w=0.9,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-7,
@@ -107,6 +107,7 @@ class MaxAdam(Optimizer):
         self.amsgrad = amsgrad
         self.chaos_punish = chaos_punishment
         self.std = 0.0
+        self.alpha_ema_w = alpha_ema_w
 
     def build(self, var_list):
         """Initialize optimizer variables.
@@ -144,7 +145,7 @@ class MaxAdam(Optimizer):
                 )
 
     def update_loss(self, new_std: float):
-        self.std = new_std
+        self.std = self.alpha_ema_w*new_std+(1-self.alpha_ema_w)*self.std
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
@@ -249,7 +250,7 @@ class AdAlpha_Momentum(MaxAdam):
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
         alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (
-                    1 - self.std * self.chaos_punish) ** self.chaos_punish
+                    1 - self.std) ** self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
@@ -295,7 +296,7 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
     def _calculate_loss_std(self):
         std = np.divide(np.std(self.losses) / np.mean(self.losses) - self.std, self.std, out=np.zeros_like(self.std),
                         where=self.std != 0)
-        self.std = np.std(self.losses) / np.mean(self.losses) - self.std
+        self.std = np.std(self.losses) / np.mean(self.losses)
         self.optimizer.update_loss(std)
 
     def on_train_batch_end(self, batch, logs=None):
@@ -303,29 +304,25 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
         self.losses = self.losses[-self.hold:]
         self._calculate_loss_std()
 
-
-class LossSlopeCallback(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer"""
-
+class Adalpha_Plot(MaxAdamCallback):
     def __init__(self, optimizer: MaxAdam, num_to_hold):
-        super().__init__()
-        self.optimizer = optimizer
-        self.losses = []
-        self.hold = num_to_hold
-        self.std = 0.0
-        self.r2 = 0.0
+        super().__init__(optimizer, num_to_hold)
+        self.stds = [0]
 
     def _calculate_loss_std(self):
-        val, _, _, r2, _ = sp.stats.linregress(np.arange(0, len(self.losses)), np.asarray(self.losses))
-        r2 = np.divide(r2, np.mean(self.losses), out=np.zeros_like(r2), where=r2 != 0)
-        pc_r2 = np.divide(r2 - self.r2, self.r2, out=np.zeros_like(self.r2), where=self.r2 != 0)
-        self.r2 = r2
-        self.optimizer.update_loss(-pc_r2)
+        std = np.cbrt(np.divide(np.std(self.losses) / np.mean(self.losses) - self.std, self.std, out=np.zeros_like(self.std),
+                        where=self.std != 0))
+        self.std = np.std(self.losses) / np.mean(self.losses)
+        self.stds.append(self.optimizer.alpha_ema_w*(self.optimizer.lr * (1 - std) ** self.optimizer.chaos_punish) + (1-self.optimizer.alpha_ema_w)*self.stds[-1])
+        self.optimizer.update_loss(std)
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.losses.append(logs["loss"])
-        self.losses = self.losses[-self.hold:]
-        self._calculate_loss_std()
+
+    def on_train_end(self, logs=None):
+        plt.clf()
+        plt.plot(self.stds, "r-", label="adalpha learning rate")
+        plt.legend()
+        plt.show()
+
 
 
 class OneCallback(tf.keras.callbacks.Callback):

@@ -51,7 +51,7 @@ def adam_train_bike(epochs=100, learning_rate=0.01):
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=7):
     """
         Main executable for the program
         :return: None
@@ -100,7 +100,7 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=7):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
@@ -120,12 +120,13 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     print(f"Adalpha r squared score: {adalpha_r_2}\nAdam r squared score: {r_2}")
     return adalpha_r_2, r_2
 
-def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10):
+def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10, copy=False):
     losses = []
     for i in range(tests):
         losses.append(
             bike_test(callback, optimizer, epochs, learning_rate, chaos_punishment))
-
+    if copy:
+        pd.DataFrame(losses).to_clipboard(excel=True)
     print(np.asarray(losses))
 
 def adam_train_mnist(epochs=10, learning_rate=0.01):
@@ -163,7 +164,7 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
     print("Evaluating Adam")
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
-def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
+def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=2):
     """
         Main executable for the program
         :return: None
@@ -201,7 +202,7 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
     print("Evaluating Adalpha")
     return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
 
-def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishment=6):
+def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishment=2):
     """
     Main executable for the program
     :return: None
@@ -246,14 +247,16 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishme
     ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam\nOver {epochs} epochs")
     fig.tight_layout()
     plt.show()
-    return adalpha_acc
+    return adalpha_acc, acc
     
-def mnist_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10):
+def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=4, tests=10, copy=False):
     losses = []
     for i in range(tests):
         losses.append(
             mnist_test(callback, optimizer, epochs, learning_rate, chaos_punishment))
 
+    if copy:
+        pd.DataFrame(losses).to_clipboard(excel=True)
     print(np.asarray(losses))
 
 
@@ -266,6 +269,7 @@ def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_pu
     for val in chaos_punishment:
         adalpha_r_2.append(adalpha_train_bike(callback, optimizer, epochs, learning_rate, val)[0])
 
+    plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
@@ -275,7 +279,7 @@ def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_pu
     plt.grid(True)
     plt.show()
 
-def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
@@ -284,6 +288,7 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     for val in chaos_punishment:
         adalpha_r_2.append(adalpha_train_mnist(callback, optimizer, epochs, learning_rate, val)[0])
 
+    plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
