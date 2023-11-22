@@ -51,7 +51,7 @@ def adam_train_bike(epochs=100, learning_rate=0.01):
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=7):
+def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, chaos_punishment=7):
     """
         Main executable for the program
         :return: None
@@ -89,7 +89,7 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     model = tf.keras.Model(input_layer, model)
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20)]
+    callbacks = [callback(my_optimizer, ema_w)]
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
@@ -100,11 +100,11 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=7):
+def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, chaos_punishment=7):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback, optimizer, epochs, learning_rate, chaos_punishment)
+    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w)
     r_2, y_pred, y_test= adam_train_bike(epochs, learning_rate)
     plt.legend()
     plt.show()
@@ -120,7 +120,7 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishm
     print(f"Adalpha r squared score: {adalpha_r_2}\nAdam r squared score: {r_2}")
     return adalpha_r_2, r_2
 
-def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6, tests=10, copy=False):
+def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, chaos_punishment=6, tests=10, copy=False):
     losses = []
     for i in range(tests):
         losses.append(
@@ -164,7 +164,7 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
     print("Evaluating Adam")
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
-def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=2):
+def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, chaos_punishment=2):
     """
         Main executable for the program
         :return: None
@@ -186,7 +186,7 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
     my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20)]
+    callbacks = [callback(my_optimizer, ema_w)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
@@ -202,12 +202,12 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
     print("Evaluating Adalpha")
     return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
 
-def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishment=2):
+def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, chaos_punishment=2):
     """
     Main executable for the program
     :return: None
     """
-    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback, optimizer, epochs, learning_rate, chaos_punishment)
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w)
     acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
     plt.show()
     # ====================
@@ -249,25 +249,25 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, chaos_punishme
     plt.show()
     return adalpha_acc, acc
     
-def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=4, tests=10, copy=False):
+def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, chaos_punishment=4, tests=10, copy=False):
     losses = []
     for i in range(tests):
         losses.append(
-            mnist_test(callback, optimizer, epochs, learning_rate, chaos_punishment))
+            mnist_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w))
 
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     print(np.asarray(losses))
 
 
-def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=0.9, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
     for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_bike(callback, optimizer, epochs, learning_rate, val)[0])
+        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
@@ -279,14 +279,14 @@ def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, chaos_pu
     plt.grid(True)
     plt.show()
 
-def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
     for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_mnist(callback, optimizer, epochs, learning_rate, val)[0])
+        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
@@ -298,7 +298,7 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, chaos_pu
     plt.grid(True)
     plt.show()
 
-def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
+def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, chaos_punishment=6):
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
     input_layer = tf.keras.layers.Input((32, 32, 3))
@@ -316,7 +316,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishm
     my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20)]
+    callbacks = [callback(my_optimizer, ema_w)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, callbacks=callbacks, validation_split=0.2,
