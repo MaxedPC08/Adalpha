@@ -156,7 +156,7 @@ class Adalpha(Optimizer):
         return config
 
 
-class AdAlpha_Momentum(MaxAdam):
+class AdAlpha_Momentum(Adalpha):
     """
     Optimizer for Tensorflow Keras based on the Adam optimizer. This version implements two changes:
     1: Adalpha adjusts the alpha value based on the value passed in through the update_loss method.
