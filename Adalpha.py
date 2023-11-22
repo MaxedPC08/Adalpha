@@ -229,9 +229,11 @@ class AdAlpha_Momentum(Adalpha):
 
 
 class MaxAdamCallback(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer"""
+    """A class that updates the loss of the Max_Adam optimizer.
+    Uses a ratio of two weighted exponential moving averages of the loss of the model.
+    Experimental"""
 
-    def __init__(self, optimizer: MaxAdam, ema_w):
+    def __init__(self, optimizer: Adalpha, ema_w):
         super().__init__()
         self.optimizer = optimizer
         self.loss = 1
@@ -249,7 +251,7 @@ class MaxAdamCallback(tf.keras.callbacks.Callback):
         self._calculate_loss_std()
 
 class Adalpha_Plot(MaxAdamCallback):
-    def __init__(self, optimizer: MaxAdam, num_to_hold):
+    def __init__(self, optimizer: Adalpha, num_to_hold):
         super().__init__(optimizer, num_to_hold)
         self.stds = [0]
 
@@ -270,7 +272,7 @@ class Adalpha_Plot(MaxAdamCallback):
 class OneCallback(tf.keras.callbacks.Callback):
     """A class that updates the loss of the Max_Adam optimizer"""
 
-    def __init__(self, optimizer: MaxAdam, num_to_hold):
+    def __init__(self, optimizer: Adalpha, num_to_hold):
         super().__init__()
         self.optimizer = optimizer
         self.losses = []
