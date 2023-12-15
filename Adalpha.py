@@ -1,16 +1,10 @@
 import tensorflow as tf
 from keras.optimizers import Optimizer
-from tensorflow.python.util.tf_export import keras_export
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-@keras_export(
-    "keras.optimizers.Adalpha",
-    "keras.optimizers.experimental.Adalpha",
-    "keras.dtensor.experimental.optimizers.Adalpha",
-    v1=[],
-)
+
 class MaxAdam(Optimizer):
     r"""
     Base class for the Adalpha optimizer. Do not use
