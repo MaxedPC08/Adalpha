@@ -6,34 +6,35 @@ import matplotlib.pyplot as plt
 
 
 @keras_export(
-    "keras.optimizers.Adam",
-    "keras.optimizers.experimental.Adam",
-    "keras.dtensor.experimental.optimizers.Adam",
+    "keras.optimizers.Adalpha",
+    "keras.optimizers.experimental.Adalpha",
+    "keras.dtensor.experimental.optimizers.Adalpha",
     v1=[],
 )
-class Adalpha(Optimizer):
-    r"""Base class - do not use (yet)
+class MaxAdam(Optimizer):
+    r"""
+    Base class for the Adalpha optimizer. Do not use
     """
 
     def __init__(
             self,
-            learning_rate=0.001,
-            chaos_punishment=1,
-            alpha_ema_w=0.9,
-            beta_1=0.9,
-            beta_2=0.999,
-            epsilon=1e-7,
-            amsgrad=False,
-            weight_decay=None,
-            clipnorm=None,
-            clipvalue=None,
-            global_clipnorm=None,
-            use_ema=False,
-            ema_momentum=0.99,
-            ema_overwrite_frequency=None,
-            jit_compile=True,
-            name="Adam",
-            **kwargs
+            learning_rate=0.001,  # The initial learning rate.
+            chaos_punishment=1,  # The chaos punishment parameter.
+            alpha_ema_w=0.9,  # The alpha for the exponential moving average of the loss.
+            beta_1=0.9,  # The exponential decay rate for the first moment estimates.
+            beta_2=0.999,  # The exponential decay rate for the second moment estimates.
+            epsilon=1e-7,  # A constant epsilon used to improve numerical stability.
+            amsgrad=False,  # Whether to apply the AMSGrad variant of this algorithm.
+            weight_decay=None,  # A constant multiplier applied to the gradient to reduce the weight of unimportant factors.
+            clipnorm=None,  # A maximum norm for the gradients.
+            clipvalue=None,  # A minimum value for the gradients.
+            global_clipnorm=None,  # A maximum norm for all the gradients.
+            use_ema=False,  # Whether to use the exponential moving average of the parameters.
+            ema_momentum=0.99,  # The momentum for the exponential moving average of the parameters.
+            ema_overwrite_frequency=None,  # The frequency with which to overwrite the EMA parameters.
+            jit_compile=True,  # Whether to use just-in-time compilation.
+            name="Adalpa",  # The name of the optimizer.
+            **kwargs  # Additional keyword arguments.
     ):
         super().__init__(
             name=name,
@@ -53,7 +54,8 @@ class Adalpha(Optimizer):
         self.epsilon = epsilon
         self.amsgrad = amsgrad
         self.chaos_punish = chaos_punishment
-        self.std = 1.0
+        self.std = 0.0
+        self.alpha_ema_w = alpha_ema_w
 
     def build(self, var_list):
         """Initialize optimizer variables.
@@ -91,7 +93,10 @@ class Adalpha(Optimizer):
                 )
 
     def update_loss(self, new_std: float):
-        self.std = new_std
+        """
+        Set the self.std to the exponential moving average of itself and new_std
+        """
+        self.std = self.alpha_ema_w*new_std+(1-self.alpha_ema_w)*self.std
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
@@ -156,12 +161,12 @@ class Adalpha(Optimizer):
         return config
 
 
-class AdAlpha_Momentum(Adalpha):
+class AdAlpha_Momentum(MaxAdam):
     """
     Optimizer for Tensorflow Keras based on the Adam optimizer. This version implements two changes:
     1: Adalpha adjusts the alpha value based on the value passed in through the update_loss method.
     This method is typically implemented in a callback at the end of each batch. Alpha is multiplied by
-                            L**chaos_punishment
+                            (1-L*chaos_punishment)**chaos_punishment
     chaos_punishment is a value passed into the optimizer on initiation. L is the value passed in through update_loss,
     and should never exceed 1.
 
@@ -195,7 +200,8 @@ class AdAlpha_Momentum(Adalpha):
         var_key = self._var_key(variable)
         m = self._momentums[self._index_dict[var_key]]
         v = self._velocities[self._index_dict[var_key]]
-        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (self.std) ** self.chaos_punish
+        alpha = lr * (tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)) * (
+                    1 - self.std) ** self.chaos_punish
 
         if isinstance(gradient, tf.IndexedSlices):
             # Sparse gradients.
@@ -229,39 +235,66 @@ class AdAlpha_Momentum(Adalpha):
 
 
 class MaxAdamCallback(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer.
-    Uses a ratio of two weighted exponential moving averages of the loss of the model.
-    Experimental"""
+    # A class that updates the loss of the Max_Adam optimizer
 
-    def __init__(self, optimizer: Adalpha, ema_w):
+    def __init__(self, optimizer: MaxAdam):
+        """
+        Initialize the MaxAdamCallback class.
+
+        Args:
+            optimizer (MaxAdam): The MaxAdam optimizer to update the loss of.
+        """
         super().__init__()
         self.optimizer = optimizer
-        self.loss = 1
-        self.ema_w = ema_w
-        self.a = 1
-        self.b = 1
+        self.stds = [0]
+        self.losses = []
+        self.std = 0.0
 
     def _calculate_loss_std(self):
-        self.a = self.ema_w * self.loss + (1-self.ema_w) * self.a
-        self.b = (1 - self.ema_w) * self.loss + self.ema_w * self.b
-        self.optimizer.update_loss((self.ema_w * self.a)/self.b)
+        """
+        Update the alpha multiplier of the optimizer and save for plotting.
+        """
+        std = np.cbrt(
+            np.divide(np.std(self.losses) / np.mean(self.losses) - self.std, self.std, out=np.zeros_like(self.std),
+                      where=self.std != 0))
+        self.std = np.std(self.losses) / np.mean(self.losses)
+        self.stds.append(self.optimizer.alpha_ema_w * (self.optimizer.lr * (1 - std) ** self.optimizer.chaos_punish) + (
+                    1 - self.optimizer.alpha_ema_w) * self.stds[-1])
+        self.optimizer.update_loss(std)
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.loss = logs["loss"]
-        self._calculate_loss_std()
+    def on_train_end(self, logs=None):
+        """
+        Plot graphs at the end of training.
+        """
+        plt.clf()
+        plt.plot(self.stds, "r-", label="adalpha learning rate")
+        plt.legend()
+        plt.show()
 
 class Adalpha_Plot(MaxAdamCallback):
-    def __init__(self, optimizer: Adalpha, num_to_hold):
-        super().__init__(optimizer, num_to_hold)
+    """
+    Similar to Adalpha_Callback in math but it plots the multiplier at the end of training.
+    """
+    def __init__(self, optimizer: MaxAdam):
+
+        super().__init__(optimizer)
         self.stds = [0]
 
     def _calculate_loss_std(self):
-        self.a = self.ema_w * self.loss + (1-self.ema_w) * self.a
-        self.b = (1 - self.ema_w) * self.loss + self.ema_w * self.b
-        self.stds.append(self.optimizer.learning_rate * (self.ema_w * self.a)/self.b)
-        self.optimizer.update_loss((self.ema_w * self.a) / self.b)
+        """
+        Update the alpha multiplier of the optimizer and save for plotting.
+        """
+        std = np.cbrt(np.divide(np.std(self.losses) / np.mean(self.losses) - self.std, self.std, out=np.zeros_like(self.std),
+                        where=self.std != 0))
+        self.std = np.std(self.losses) / np.mean(self.losses)
+        self.stds.append(self.optimizer.alpha_ema_w*(self.optimizer.lr * (1 - std) ** self.optimizer.chaos_punish) + (1-self.optimizer.alpha_ema_w)*self.stds[-1])
+        self.optimizer.update_loss(std)
+
 
     def on_train_end(self, logs=None):
+        """
+        Plot graphs at the end of training.
+        """
         plt.clf()
         plt.plot(self.stds, "r-", label="adalpha learning rate")
         plt.legend()
@@ -272,17 +305,14 @@ class Adalpha_Plot(MaxAdamCallback):
 class OneCallback(tf.keras.callbacks.Callback):
     """A class that updates the loss of the Max_Adam optimizer"""
 
-    def __init__(self, optimizer: Adalpha, num_to_hold):
+    def __init__(self, optimizer: MaxAdam, num_to_hold):
+        """Initiator
+        :param optimizer: The optimizer to update the losses in. Must be an initiated optimizer object.
+        :param num_to_hold: Made to keep signature of other callbacks. Has no effect"""
         super().__init__()
         self.optimizer = optimizer
         self.losses = []
         self.hold = num_to_hold
         self.std = 0.0
 
-    def _calculate_loss_std(self):
-        self.optimizer.update_loss(0.0)
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.losses.append(logs["loss"])
-        self.losses = self.losses[-self.hold:]
-        self._calculate_loss_std()

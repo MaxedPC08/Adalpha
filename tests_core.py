@@ -1,16 +1,28 @@
+from typing import Tuple, Any
+
+from numpy import ndarray, dtype, generic
+
 from utils import *
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 
-def adam_train_bike(epochs=100, learning_rate=0.01):
+def adam_train_bike(epochs: int = 100, learning_rate: float = 0.01) -> Tuple[float, np.ndarray, np.ndarray]:
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a bike sharing model using the Adam optimizer.
+
+    Args:
+        epochs (int, optional): The number of epochs to train for. Defaults to 100.
+        learning_rate (float, optional): The learning rate to use for Adam. Defaults to 0.01.
+
+    Returns:
+        Tuple[float, np.ndarray, np.ndarray]: A tuple containing the R^2 score on the test data, the predicted values, and the true values.
+    """
     homo_csv(FILE_NAME, FILE_NAME)
     verifier = String_Verifier()
-    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
+    _, data = csv_to_data(
+        FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ",")
+    )
     date_data = make_date(np.asarray(data)[:, 0])
     data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
     np.random.shuffle(data)
@@ -49,14 +61,31 @@ def adam_train_bike(epochs=100, learning_rate=0.01):
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+def adalpha_train_bike(
+    callback: callable,
+    optimizer: callable,
+    epochs: int = 100,
+    learning_rate: float = 0.01,
+    chaos_punishment: int = 6,
+) -> tuple[ndarray[Any, dtype[generic | generic | Any]], Any, ndarray[Any, dtype[generic | generic | Any]]]:
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a bike sharing model using the Adalpha optimizer.
+
+    Args:
+        callback callable: A function that returns a Callback object.
+        optimizer callable: A function that returns an Optimizer object.
+        epochs (int, optional): The number of epochs to train for. Defaults to 100.
+        learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
+        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+
+    Returns:
+        tuple[float, np.ndarray, np.ndarray]: A tuple containing the R^2 score on the test data, the predicted values, and the true values.
+    """
     homo_csv(FILE_NAME, FILE_NAME)
     verifier = String_Verifier()
-    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
+    _, data = csv_to_data(
+        FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ",")
+    )
     date_data = make_date(np.asarray(data)[:, 0])
     data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
     np.random.shuffle(data)
@@ -72,8 +101,6 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
     x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
-
     # Create Model
     input_layer = tf.keras.layers.Input(shape=(15))
     normalized_in = tf.keras.layers.BatchNormalization()(input_layer)
@@ -87,10 +114,17 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     model = tf.keras.Model(input_layer, model)
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20)]
+    my_optimizer = optimizer()
     model.compile(optimizer=my_optimizer, loss="mse")
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
-                        verbose=False)
+    history = model.fit(
+        x_data,
+        y_data,
+        epochs=epochs,
+        batch_size=128,
+        callbacks=[callback(my_optimizer, chaos_punishment)],
+        validation_split=0.2,
+        verbose=False,
+    )
     # Graphing the Adalpha Results
 
     plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
@@ -98,14 +132,31 @@ def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chao
     y_pred = model.predict(x_test, verbose=False)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def adalpha_new_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, chaos_punishment=6):
+def adalpha_new_train_bike(
+    callback: callable,
+    optimizer: callable,
+    epochs: int = 100,
+    learning_rate: float = 0.01,
+    chaos_punishment: int = 6,
+) -> tuple[ndarray[Any, dtype[generic | generic | Any]], Any, ndarray[Any, dtype[generic | generic | Any]]]:
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a bike sharing model using the Adalpha optimizer.
+
+    Args:
+        callback callable: A function that returns a Callback object.
+        optimizer callable: A function that returns an Optimizer object.
+        epochs (int, optional): The number of epochs to train for. Defaults to 100.
+        learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
+        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+
+    Returns:
+        tuple[float, np.ndarray, np.ndarray]: A tuple containing the R^2 score on the test data, the predicted values, and the true values.
+    """
     homo_csv(FILE_NAME, FILE_NAME)
     verifier = String_Verifier()
-    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
+    _, data = csv_to_data(
+        FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ",")
+    )
     date_data = make_date(np.asarray(data)[:, 0])
     data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
     data = data[int(data.shape[0] * SPLIT):, :]
@@ -137,23 +188,30 @@ def adalpha_new_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, 
     model = tf.keras.layers.Dense(1, activation="relu")(model)
     model = tf.keras.Model(input_layer, model)
 
+
     # Train with Adalpha
     callbacks = [callback(my_optimizer, 20)]
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
     # Graphing the Adalpha Results
-
+    y_pred = model.predict(x_test, verbose=False)
     plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "b-", label="Adalpha Val Loss")
     orig_r2 = r2_score(model.predict(x_test, verbose=False), y_test)
     return r2_score(y_pred, y_test), y_pred, y_test
 
-def adam_train_mnist(epochs=10, learning_rate=0.01):
+def adam_train_mnist(epochs: int = 10, learning_rate: float = 0.01) -> Tuple[float, np.ndarray, np.ndarray]:
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a MNIST classifier using the Adam optimizer.
+
+    Args:
+        epochs (int, optional): The number of epochs to train for. Defaults to 10.
+        learning_rate (float, optional): The learning rate to use for Adam. Defaults to 0.01.
+
+    Returns:
+        Tuple[float, np.ndarray, np.ndarray]: A tuple containing the accuracy on the test data, the predicted values, and the true values.
+    """
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_data = np.expand_dims(x_data, 3)
     x_test = np.expand_dims(x_test, 3)
@@ -174,22 +232,32 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, validation_split=0.2,
                         verbose=False)
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
+
     plt.plot(history.history["loss"], "r-", label="Adam Loss")
     plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
-    plt.legend()
-    plt.show()
     y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating Adam")
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
-def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chaos_punishment=6):
+def adalpha_train_mnist(
+    callback: callable,
+    optimizer: callable,
+    epochs: int = 10,
+    learning_rate: float = 0.01,
+    chaos_punishment: int = 6,
+) -> tuple[float, np.ndarray, np.ndarray]:
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a MNIST classifier using the Adalpha optimizer.
+
+    Args:
+        callback (callable): A function that returns a Callback object.
+        optimizer (callable): A function that returns an Optimizer object.
+        epochs (int, optional): The number of epochs to train for. Defaults to 10.
+        learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
+        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+
+    Returns:
+        tuple[float, np.ndarray, np.ndarray]: A tuple containing the accuracy on the test data, the predicted values, and the true values.
+    """
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_data = np.expand_dims(x_data, 3)
     x_test = np.expand_dims(x_test, 3)
@@ -204,22 +272,19 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, chao
 
     model = tf.keras.Model(input_layer, output)
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
-
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20)]
+    my_optimizer = optimizer()
+    callbacks = [callback(my_optimizer, chaos_punishment)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
     # Graphing the Adalpha Results
+
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
-    plt.legend()
-    plt.show()
+    plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "b-", label="Adalpha Val Loss")
     adalpha_y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating Adalpha")
     return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
