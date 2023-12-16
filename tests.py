@@ -1,104 +1,9 @@
 import matplotlib.pyplot as plt
-
+from tests_core import *
 from utils import *
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
-
-def adam_train_bike(epochs=100, learning_rate=0.01):
-    """
-        Main executable for the program
-        :return: None
-        """
-    homo_csv(FILE_NAME, FILE_NAME)
-    verifier = String_Verifier()
-    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
-    date_data = make_date(np.asarray(data)[:, 0])
-    data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
-    np.random.shuffle(data)
-
-    # Remove non-working days
-    mask = (data[:, -1] != 0)
-    data = data[mask, :]
-    # Split data into test and train data
-    y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
-    x_data = min_max_norm(np.asarray(np.delete(data, 3, 1)))
-    y_test = y_data[int(y_data.shape[0] * SPLIT):, :]
-    x_test = x_data[int(x_data.shape[0] * SPLIT):, :]
-    y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
-    x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
-
-    # Create Model
-    input_layer = tf.keras.layers.Input(shape=(15))
-    normalized_in = tf.keras.layers.BatchNormalization()(input_layer)
-    model = tf.keras.layers.Reshape((15, 1))(normalized_in)
-    model = tf.keras.layers.Conv1D(96, 5, activation="relu")(model)
-    model = tf.keras.layers.Conv1D(64, 5, activation="relu")(model)
-    model = tf.keras.layers.Flatten()(model)
-
-    model = tf.keras.layers.concatenate((normalized_in, model))
-    model = tf.keras.layers.Dense(1, activation="relu")(model)
-    model = tf.keras.Model(input_layer, model)
-
-    # Train with Adalpha
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss="mse")
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, validation_split=0.2,
-                        verbose=False)
-    # Graphing the Adalpha Results
-
-    plt.plot(history.history["loss"], "r-", label="Adam Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
-    y_pred = model.predict(x_test, verbose=False)
-    return r2_score(y_pred, y_test), y_pred, y_test
-
-def adalpha_train_bike(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=7):
-    """
-        Main executable for the program
-        :return: None
-        """
-    homo_csv(FILE_NAME, FILE_NAME)
-    verifier = String_Verifier()
-    _, data = csv_to_data(FILE_NAME, (0, 15), verifier=verifier, dtype=str, delimiters=("\n", ","))
-    date_data = make_date(np.asarray(data)[:, 0])
-    data = np.concatenate((date_data, np.asarray(data)[:, 1:]), axis=1).astype(float)
-    np.random.shuffle(data)
-
-    # Remove non-working days
-    mask = (data[:, -1] != 0)
-    data = data[mask, :]
-    # Split data into test and train data
-    y_data = np.reshape(np.asarray(data)[:, 3], (data.shape[0], 1))
-    x_data = min_max_norm(np.asarray(np.delete(data, 3, 1)))
-    y_test = y_data[int(y_data.shape[0] * SPLIT):, :]
-    x_test = x_data[int(x_data.shape[0] * SPLIT):, :]
-    y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
-    x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
-
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
-
-    # Create Model
-    input_layer = tf.keras.layers.Input(shape=(15))
-    normalized_in = tf.keras.layers.BatchNormalization()(input_layer)
-    model = tf.keras.layers.Reshape((15, 1))(normalized_in)
-    model = tf.keras.layers.Conv1D(96, 5, activation="relu")(model)
-    model = tf.keras.layers.Conv1D(64, 5, activation="relu")(model)
-    model = tf.keras.layers.Flatten()(model)
-
-    model = tf.keras.layers.concatenate((normalized_in, model))
-    model = tf.keras.layers.Dense(1, activation="relu")(model)
-    model = tf.keras.Model(input_layer, model)
-
-    # Train with Adalpha
-    callbacks = [callback(my_optimizer, ema_w, change)]
-    model.compile(optimizer=my_optimizer, loss="mse")
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
-                        verbose=False)
-    # Graphing the Adalpha Results
-
-    plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "b-", label="Adalpha Val Loss")
-    y_pred = model.predict(x_test, verbose=False)
-    return r2_score(y_pred, y_test), y_pred, y_test
 
 def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=7):
     plt.xlabel("Epoch")
@@ -121,6 +26,23 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, ch
     return adalpha_r_2, r_2
 
 def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99,  chaos_punishment=6, tests=10, copy=False):
+    """
+    Performs multiple tests on the bike data using the given parameters.
+
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+        tests (int): The number of tests to run.
+        copy (bool): Whether to copy the results to the clipboard in Excel format.
+
+    Returns:
+        None
+    """
     losses = []
     for i in range(tests):
         losses.append(
@@ -131,9 +53,15 @@ def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_
 
 def adam_train_mnist(epochs=10, learning_rate=0.01):
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a neural network on the MNIST dataset using Adam optimization and Adalpha optimization.
+
+    Parameters:
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+
+    Returns:
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    """
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_data = np.expand_dims(x_data, 3)
     x_test = np.expand_dims(x_test, 3)
@@ -166,9 +94,18 @@ def adam_train_mnist(epochs=10, learning_rate=0.01):
 
 def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
     """
-        Main executable for the program
-        :return: None
-        """
+    Trains a neural network on the MNIST dataset using Adalpha optimization.
+
+    Parameters:
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+
+    Returns:
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    """
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_data = np.expand_dims(x_data, 3)
     x_test = np.expand_dims(x_test, 3)
@@ -204,9 +141,21 @@ def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, ema_
 
 def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
     """
-    Main executable for the program
-    :return: None
+    Trains a neural network on the MNIST dataset using Adalpha optimization.
+
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+
+    Returns:
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
     """
+
     adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
     acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
     plt.show()
@@ -250,6 +199,23 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, cha
     return adalpha_acc, acc
 
 def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=4, tests=10, copy=False):
+    """
+    Runs multiple tests of the MNIST_test function.
+
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+        tests (int): The number of tests to run.
+        copy (bool): Whether to copy the results to the clipboard in Excel format.
+
+    Returns:
+        None
+    """
     losses = []
     for i in range(tests):
         losses.append(
