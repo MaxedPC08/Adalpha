@@ -1,41 +1,16 @@
-from typing import Tuple, Any
-
-from numpy import ndarray, dtype, generic
-
+import matplotlib.pyplot as plt
 from tests_core import *
+from utils import *
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 
-def bike_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 100,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: int = 7,  # the chaos punishment value for the optimizer
-) -> tuple[ndarray[Any, dtype[generic | generic | Any]], float]:
-    """
-    This function trains two different models on the bike dataset and compares their predictions.
-
-    Args:
-        callback: the chaos callback function
-        optimizer: the chaos optimizer function
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight for the chaos parameter
-        chaos_punishment: the chaos punishment value for the optimizer
-
-    Returns:
-        A tuple containing the r-squared scores for the Adalpha and Adam models, as well as the predicted and actual values for the bike dataset.
-    """
+def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=7):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(
-        callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w)
-    r_2, y_pred, y_test = adam_train_bike(
-        epochs, learning_rate)
+    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
+    r_2, y_pred, y_test= adam_train_bike(epochs, learning_rate)
     plt.legend()
     plt.show()
 
@@ -50,66 +25,138 @@ def bike_test(
     print(f"Adalpha r squared score: {adalpha_r_2}\nAdam r squared score: {r_2}")
     return adalpha_r_2, r_2
 
-def bike_multiple_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 100,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: int = 7,  # the chaos punishment value for the optimizer
-    tests: int = 10,  # the number of tests to run
-    copy: bool = False,  # whether or not to copy the results to the clipboard
-) -> None:
+def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99,  chaos_punishment=6, tests=10, copy=False):
     """
-    This function trains two different models on the bike dataset and compares their predictions.
+    Performs multiple tests on the bike data using the given parameters.
 
-    Args:
-        callback: the chaos callback function
-        optimizer: the chaos optimizer function
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight for the chaos parameter
-        chaos_punishment: the chaos punishment value for the optimizer
-        tests: the number of tests to run
-        copy: whether or not to copy the results to the clipboard
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+        tests (int): The number of tests to run.
+        copy (bool): Whether to copy the results to the clipboard in Excel format.
 
     Returns:
         None
     """
     losses = []
-
     for i in range(tests):
-        adalpha_r_2, r_2 = bike_test(
-            callback, optimizer, epochs, learning_rate, chaos_punishment)
-        losses.append((adalpha_r_2, r_2))
-
+        losses.append(
+            bike_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment))
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     print(np.asarray(losses))
 
-def mnist_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 5,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: int = 2,  # the chaos punishment value for the optimizer
-) -> tuple[float, ndarray[Any, dtype[generic | generic | Any]], ndarray[Any, dtype[generic | generic | Any]]]:
+def adam_train_mnist(epochs=10, learning_rate=0.01):
     """
-    This function trains two different models on the MNIST dataset and compares their predictions.
+    Trains a neural network on the MNIST dataset using Adam optimization and Adalpha optimization.
 
-    Args:
-        callback: the chaos callback function
-        optimizer: the chaos optimizer function
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight for the chaos parameter
-        chaos_punishment: the chaos punishment value for the optimizer
+    Parameters:
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
 
     Returns:
-        A tuple containing the accuracy scores for the Adalpha and Adam models, as well as the predicted and actual values for the MNIST dataset.
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
     """
-    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w)
+    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    x_data = np.expand_dims(x_data, 3)
+    x_test = np.expand_dims(x_test, 3)
+
+    input_layer = tf.keras.layers.Input((28, 28, 1))
+    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(input_layer)
+    parallel_1 = tf.keras.layers.MaxPool2D(2)(parallel_1)
+    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(parallel_1)
+    parallel_1 = tf.keras.layers.Conv2D(32, (5, 5), activation="tanh")(parallel_1)
+    parallel_1 = tf.keras.layers.Reshape((32,))(parallel_1)
+    output = tf.keras.layers.Dense(10, activation="softmax")(parallel_1)
+
+    model = tf.keras.Model(input_layer, output)
+
+    # Train with Adalpha
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss=tf.keras.losses.sparse_categorical_crossentropy,
+                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, validation_split=0.2,
+                        verbose=False)
+    # Graphing the Adalpha Results
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
+    plt.plot(history.history["loss"], "r-", label="Adam Loss")
+    plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
+    plt.legend()
+    y_pred = model.predict(x_test, verbose=False)
+    print("Evaluating Adam")
+    return model.evaluate(x_test, y_test)[1], y_pred, y_test
+
+def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
+    """
+    Trains a neural network on the MNIST dataset using Adalpha optimization.
+
+    Parameters:
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+
+    Returns:
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    """
+    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    x_data = np.expand_dims(x_data, 3)
+    x_test = np.expand_dims(x_test, 3)
+
+    input_layer = tf.keras.layers.Input((28, 28, 1))
+    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(input_layer)
+    parallel_1 = tf.keras.layers.MaxPool2D(2)(parallel_1)
+    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(parallel_1)
+    parallel_1 = tf.keras.layers.Conv2D(32, (5, 5), activation="tanh")(parallel_1)
+    parallel_1 = tf.keras.layers.Reshape((32,))(parallel_1)
+    output = tf.keras.layers.Dense(10, activation="softmax")(parallel_1)
+
+    model = tf.keras.Model(input_layer, output)
+
+    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+
+    # Train with Adalpha
+    callbacks = [callback(my_optimizer, ema_w, change)]
+    model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
+                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
+                        verbose=False)
+    # Graphing the Adalpha Results
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
+    plt.plot(history.history["loss"], "b-", label="Adalpha Loss")
+    plt.plot(history.history["val_loss"], "g-", label="Adalpha Val Loss")
+    plt.legend()
+    adalpha_y_pred = model.predict(x_test, verbose=False)
+    print("Evaluating Adalpha")
+    return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
+
+def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
+    """
+    Trains a neural network on the MNIST dataset using Adalpha optimization.
+
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+
+    Returns:
+        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    """
+
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
     acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
     plt.show()
     # ====================
@@ -150,72 +197,43 @@ def mnist_test(
     fig.tight_layout()
     plt.show()
     return adalpha_acc, acc
-    
-def mnist_multiple_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 10,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: int = 4,  # the chaos punishment value for the optimizer
-    tests: int = 10,  # the number of tests to run
-    copy: bool = False,  # whether or not to copy the results to the clipboard
-) -> None:
-    """
-    This function trains two different models on the MNIST dataset and compares their predictions.
 
-    Args:
-        callback: the chaos callback function
-        optimizer: the chaos optimizer function
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight for the chaos parameter
-        chaos_punishment: the chaos punishment value for the optimizer
-        tests: the number of tests to run
-        copy: whether or not to copy the results to the clipboard
+def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=4, tests=10, copy=False):
+    """
+    Runs multiple tests of the MNIST_test function.
+
+    Parameters:
+        callback (function): The chaos callback function to use.
+        optimizer (function): The chaos optimizer function to use.
+        epochs (int): The number of epochs to train for.
+        learning_rate (float): The learning rate to use.
+        ema_w (float): The EMA weight to use.
+        change (float): The change value to use.
+        chaos_punishment (int): The chaos punishment value to use.
+        tests (int): The number of tests to run.
+        copy (bool): Whether to copy the results to the clipboard in Excel format.
 
     Returns:
         None
     """
     losses = []
-
     for i in range(tests):
-        adalpha_r_2, r_2 = bike_test(
-            callback, optimizer, epochs, learning_rate, chaos_punishment)
-        losses.append((adalpha_r_2, r_2))
+        losses.append(
+            mnist_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change))
 
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     print(np.asarray(losses))
 
 
-def bike_chaos_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 50,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],  # the chaos punishment values to test
-) -> None:
+def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
-    This function tests the effect of chaos punishment values on the loss of an Adalpha model trained on the bike dataset.
-
-    Args:
-        callback: the callback
-        optimizer: the optimizer
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight
-        chaos_punishment: the chaos punishment values to test
-
-    Returns:
-        None
+    Main executable for the program
+    :return: None
     """
     adalpha_r_2 = []
-
     for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_bike(
-            callback, optimizer, epochs, learning_rate, chaos_punishment=val, ema_w=ema_w)[0])
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
@@ -227,58 +245,63 @@ def bike_chaos_test(
     plt.grid(True)
     plt.show()
 
-def mnist_chaos_test(
-    callback: callable,  # the chaos callback function
-    optimizer: callable,  # the chaos optimizer function
-    epochs: int = 2,  # the number of epochs to train for
-    learning_rate: float = 0.01,  # the learning rate for the optimizer
-    ema_w: float = 0.9,  # the exponential moving average weight for the chaos parameter
-    chaos_punishment: list[float] = [0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],  # the chaos punishment values to test
-) -> None:
+def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
-    This function tests the effect of chaos punishment values on the loss of an Adalpha model trained on the MNIST dataset.
-
-    Args:
-        callback: the chaos callback function
-        optimizer: the chaos optimizer function
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight
-        chaos_punishment: the chaos punishment values to test
-
-    Returns:
-        None
+    Main executable for the program
+    :return: None
     """
-    adalpha_acc = []
-
+    adalpha_r_2 = []
     for val in chaos_punishment:
-        adalpha_acc.append(adalpha_train_mnist(
-            callback, optimizer, epochs, learning_rate, chaos_punishment=val, ema_w=ema_w)[0])
+        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
-    plt.ylabel("Accuracy")
+    plt.ylabel("Loss")
     plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, adalpha_acc, "r-", label="Adalpha Accuracy")
+    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
     plt.show()
 
-def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, chaos_punishment=6):
+def bike_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99], change=0.99, chaos_punishment=2):
     """
-    This function tests the effect of chaos punishment values on the loss of an Adalpha model trained on the CIFAR10 dataset.
+    Main executable for the program
+    :return: None
+    """
+    adalpha_r_2 = []
+    for val in ema_w:
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
 
-    Args:
-        callback: the callback
-        optimizer: the optimizer
-        epochs: the number of epochs to train for
-        learning_rate: the learning rate for the optimizer
-        ema_w: the exponential moving average weight
-        chaos_punishment: the chaos punishment value
-    Returns:
-        None
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("ema_w")
+    plt.ylabel("Loss")
+    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
+    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha R2")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def mnist_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99, chaos_punishment=2):
     """
+    Main executable for the program
+    :return: None
+    """
+    adalpha_r_2 = []
+    for val in ema_w:
+        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
+
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("ema_w")
+    plt.ylabel("Loss")
+    plt.title(f"Accuracy vs Ema_w\nOver {epochs} epochs")
+    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha Acc")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6):
     (x_data, y_data), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
     input_layer = tf.keras.layers.Input((32, 32, 3))
@@ -296,7 +319,7 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, ch
     my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, ema_w)]
+    callbacks = [callback(my_optimizer, ema_w, change)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, callbacks=callbacks, validation_split=0.2,

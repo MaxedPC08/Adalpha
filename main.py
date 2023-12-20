@@ -10,5 +10,6 @@ from tests import *
 import Adalpha as AA
 
 if __name__ == "__main__":
-    mnist_multiple_test(AA.Adalpha_Plot, AA.AdAlpha_Momentum, epochs=1, learning_rate=0.01, chaos_punishment=2, ema_w=0.995)
+    learning_rate = 0.1
+    bike_multiple_test(AA.Adalpha_Callback, AA.AdAlpha_Momentum, epochs=20, learning_rate=learning_rate, chaos_punishment=2, change=0.99, copy=True)
 
