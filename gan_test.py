@@ -14,7 +14,7 @@ import random as r
 from collections import deque
 import numpy as np
 import gymnasium as gym
-import tensorflow as tf
+import Adalpha
 from utils import *
 
 
@@ -36,31 +36,46 @@ i	Observation               Min       Max
 1: push to right
 """
 
-# CONSTANTS will go here
-# (these are some examples that you might find helpful to use)
-# (these values are "fake")
-MEMORY_SIZE = 2000
-EXPLORATION_DECAY = 0.8
-LEARNING_SIZE = 500
-LEARNING_RATE = 0.2
-GAMMA = 0.9
-BATCH_SIZE = 128
-EPOCHS = 10
-NUMBER_OF_TRAINING_CYCLES = 0
-NUM_TESTS = 10
-LEARNING_LIMIT = 75  # less than probability (1-100) of performing learning
-MAX_STEPS_FOR_SAVING = 5
-AUTO_SAVE = True
-EXPLORATION_RATE = 0.7
-
 class MaxExpLayer(tf.keras.layers.Layer):
+    """
+    A custom Keras layer for applying element-wise exponentiation to the input.
+
+    Attributes:
+        exp_weights: The weights for element-wise exponentiation. Initialized with constant values.
+
+    Methods:
+        __init__(self, **kwargs): Initializes the MaxExpLayer instance.
+        build(self, input_shape): Builds the layer by creating the exp_weights.
+        call(self, x): Applies the element-wise exponentiation to the input x.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def build(self, input_shape):
-        self.exp_weights = self.add_weight(shape=(input_shape[-1],), initializer=tf.keras.initializers.Constant(1), name="max_exp_weight")
+        """
+        Builds the layer by creating the exp_weights.
+
+        Args:
+            input_shape: The shape of the input tensor.
+
+        Returns:
+            None
+        """
+
+        self.exp_weights = self.add_weight(shape=(input_shape[-1],),
+                                           initializer=tf.keras.initializers.Constant(1),
+                                           name="max_exp_weight")
 
     def call(self, x):
+        """
+        Calculate the element-wise power of the absolute value of input `x` with the exponent weights `self.exp_weights`.
+
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The result of element-wise power of the absolute value of `x` with the exponent weights.
+        """
         return tf.sign(x)*(tf.abs(x)**self.exp_weights)
 
 
@@ -69,7 +84,19 @@ class RLAgent:
     This agent contains the NN model as well as associated methods to help it learn.
     """
 
-    def __init__(self, obs_space:int, acts:int, callback:list, optimizer:tf.keras.optimizers.Optimizer):
+    def __init__(self,
+                 obs_space:int,
+                 acts:int,
+                 callback:list,
+                 optimizer:tf.keras.optimizers.Optimizer,
+                 memory_size:int,
+                 exp_decay:float,
+                 learning_size:int,
+                 learning_rate:float,
+                 gamma:float,
+                 epochs:int,
+                 learning_limit:int,
+                 exporation_rate:float):
         """
         This method is called when the class is constructed. It sets the simulation
         parameters, resets the training data, and loads (or creates) and compiles the NN model.
@@ -79,7 +106,14 @@ class RLAgent:
         self.action_space = acts
         self.callback = callback
         self.optimizer = optimizer
-
+        self.memory_size = memory_size
+        self.exp_decay = exp_decay
+        self.learning_size = learning_size
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.epochs = epochs
+        self.learning_limit = learning_limit
+        self.exploration_rate = exporation_rate
 
         # load the NN model
         file_name = input("Enter name of model to load (leave blank to start fresh): ")
@@ -104,8 +138,8 @@ class RLAgent:
         """
         Resets the training data (self.memory and self.exploration_rate).
         """
-        self.exploration_rate = EXPLORATION_RATE
-        self.memory = deque(maxlen=MEMORY_SIZE)
+        self.exploration_rate = self.exploration_rate
+        self.memory = deque(maxlen=self.memory_size)
 
     def store_sim_results(self, s, r, a, ns):
         """
@@ -118,16 +152,20 @@ class RLAgent:
         self.memory.append((s, r, a, ns))
 
     def learn(self):
-        """Train the NN"""
+        """
+        Trains the model using Q-learning algorithm.
 
+        Returns:
+            None.
+        """
         # don't do anything until you have enough data
-        if len(self.memory)<LEARNING_SIZE:
+        if len(self.memory)<self.learning_size:
             print("not enough data "+str(len(self.memory)))
             return
         # pick random data from all saved data to use to improve the model
         # batch is the size of how much data you will use to train the model
-        batch = r.sample(self.memory, LEARNING_SIZE)
-        for i in range(EPOCHS):
+        batch = r.sample(self.memory, self.learning_size)
+        for i in range(self.epochs):
             #Homogenize Data
             states_batch = np.asarray([i[0][0] for i in batch])
             next_state = np.asarray([i[3][0] for i in batch])
@@ -135,7 +173,7 @@ class RLAgent:
             actions = np.asarray([i[2] for i in batch])
             nn_outs = self.model.predict(states_batch, verbose=0)
             #Calculate Q values
-            q_vals = nn_outs[np.arange(len(nn_outs)), actions] * (1-LEARNING_RATE) + LEARNING_RATE * (rewards + GAMMA * np.max(self.model(next_state), axis=1))
+            q_vals = nn_outs[np.arange(len(nn_outs)), actions] * (1-self.learning_rate) + self.learning_rate * (rewards + self.gamma * np.max(self.model(next_state), axis=1))
             nn_outs[np.arange(len(nn_outs)), actions] = q_vals
 
 
@@ -157,11 +195,17 @@ class RLAgent:
             )
 
         # update the exploration value
-        self.exploration_rate *= EXPLORATION_DECAY
+        self.exploration_rate *= self.exp_decay
 
     def save(self, name="model.h5"):
-        """save the NN"""
-        if AUTO_SAVE:
+        """
+        Saves the model to a file with the given name.
+
+        :param name: The name of the file to save the model to. Default is "model.h5".
+        :type name: str
+        :return: None
+        """
+        if name != "model.h5":
             self.model.save(name)
         else:
             file_name = input(
@@ -171,28 +215,36 @@ class RLAgent:
                 self.model.save(file_name)
 
     def get_nn_action(self, single_state):
-        """use the NN to get an action"""
+        """
+        Get the action predicted by the neural network model for a single state.
+
+        Parameters:
+            single_state (numpy array): The input state for which the action is to be predicted.
+
+        Returns:
+            int: The predicted action for the given state.
+        """
         raw_predict = self.model.predict(single_state, verbose=0)[0]
         current_action = np.argmax(raw_predict)
         return current_action
 
     def get_action(self, single_state):
-        """This method will determine the next action while training"""
+        """
+        Generates the action to be taken based on the given state.
 
+        Args:
+            single_state: The state for which the action needs to be determined.
+
+        Returns:
+            int: The action to be taken.
+
+        Raises:
+            None
+        """
         # exploring
         if np.random.rand() <= self.exploration_rate:
             an_action = r.choice([0, 1])
             # you can chose to use a different algorithm to better train your model
-            #
-            #
-            #
-            #
-            # ===== YOU NEED TO WRITE THIS CODE =====
-            #
-            #
-            #
-            #
-            #
             return an_action
 
         # exploiting
@@ -223,8 +275,38 @@ def calc_reward(state: np.ndarray, reward: float, sim_step: int, next_state: np.
 
 
 
-def train(callback, optimizer):
-    """This is the main program."""
+def train(callback,
+          optimizer,
+          memory_size=10000,
+          cycles=20,
+          tests=10,
+          learning_probability=0.7,
+          epochs=10,
+          learning_limit=70,
+          learning_rate=0.001,
+          gamma=0.9,
+          exp_decay=0.995,
+          exporation_rate=0.5):
+    """
+    Trains a reinforcement learning agent using the given callback function, optimizer, and hyperparameters.
+
+    Parameters:
+    - callback: A callback function used for updating the agent's model during training.
+    - optimizer: An optimizer object used for updating the agent's model parameters.
+    - memory_size: The size of the agent's memory buffer (default: 10000).
+    - cycles: The number of training cycles/runs (default: 20).
+    - tests: The number of test trials to run after training (default: 10).
+    - learning_probability: The probability of performing a learning update during each simulation step (default: 0.7).
+    - epochs: The number of epochs to train the agent's model during each learning update (default: 10).
+    - learning_limit: The maximum number of recent experiences to use for learning (default: 70).
+    - learning_rate: The learning rate used by the optimizer (default: 0.001).
+    - gamma: The discount factor for future rewards in the agent's Q-values (default: 0.9).
+    - exp_decay: The decay rate for the exploration rate (default: 0.995).
+    - exploration_rate: The initial exploration rate for selecting actions (default: 0.5).
+
+    Returns:
+    - results: A list of the number of steps taken in each test trial after training.
+    """
     # setup the simulation
     env = gym.make(
         ENV_NAME)  # include render_mode="human" if you want to see the action
@@ -233,7 +315,7 @@ def train(callback, optimizer):
     observation_space = env.observation_space.shape[0]
     action_space = env.action_space.n
     # create my agent
-    the_agent = RLAgent(observation_space, action_space, callback, optimizer)
+    the_agent = RLAgent(observation_space, action_space, callback, optimizer, epochs=epochs, learning_size=learning_limit, learning_rate=learning_rate, gamma=gamma, memory_size=memory_size, exp_decay=exp_decay, exporation_rate=exporation_rate)
     # reset the simulation
     # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
     # to get the real sim_state, we need to only get the first term, and reformat the shape
@@ -242,7 +324,7 @@ def train(callback, optimizer):
 
     # Create some preliminary training data
 
-    for sim_run in range(MEMORY_SIZE//10):
+    for sim_run in range(memory_size//10):
         # reset the simulation
         sim_state = env.reset()
         # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
@@ -271,7 +353,7 @@ def train(callback, optimizer):
 
 
     # this is the loop of training cycles/runs
-    for sim_run in range(NUMBER_OF_TRAINING_CYCLES):
+    for sim_run in range(cycles):
         # reset the simulation
         sim_state = env.reset()
         # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
@@ -308,9 +390,6 @@ def train(callback, optimizer):
             if sim_done:
                 # print at the end of the run
                 print(f"Run:{sim_run:4},  score: {sim_step:5}")
-                # give opportunity to save NN if a very successful run.
-                if sim_step > MAX_STEPS_FOR_SAVING:
-                    the_agent.save(f"model_{sim_step}_{sim_run}.h5")
 
                 # end the step loop to start a new run
                 break
@@ -320,7 +399,7 @@ def train(callback, optimizer):
             sim_state = sim_state_next.copy()
             # determine if time to "learn"
             # could move this to only learn at the end of a simulation
-            if r.randint(0, 100) < LEARNING_LIMIT:
+            if r.random() < learning_probability:
                 the_agent.learn()
 
     # done with all the training
@@ -334,7 +413,8 @@ def train(callback, optimizer):
         render_mode="human")
 
     # Now use our model to show how well it does (or doesn't)
-    for trial_num in range(NUM_TESTS):
+    results = []
+    for trial_num in range(tests):
         sim_state = env.reset()
         env._max_episode_steps = 2000
         sim_state = np.reshape(sim_state[0], [1, observation_space])
@@ -349,12 +429,54 @@ def train(callback, optimizer):
             if sim_step>2000:
                 sim_done = True
             if sim_done:
+                results.append(sim_step)
                 print(".")
                 print("Trial:", trial_num, ".   Done after ", sim_step, " steps.")
     env.close()
+    return results
 
-def test ():
-    train()
+def learn_test(callback, lr, adalpha_chaos_punishment, epochs=10):
+    """
+    This function tests the effect of the AdAlpha_Momentum optimizer on the reinforcement learning problem.
+
+    Args:
+        callback: the callback
+        adam_lr: the learning rate for the Adam optimizer
+        adalpha_lr: the learning rate for the AdAlpha_Momentum optimizer
+        adalpha_chaos_punishment: the chaos punishment value for the AdAlpha_Momentum optimizer
+        epochs: the number of epochs to train for
+
+    Returns:
+        None
+    """
+    # Set up your data and model here
+
+    # Create the Adam optimizer
+    adam_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+    # Create the AdAlpha_Momentum optimizer
+    adalpha_optimizer = Adalpha.AdAlpha_Momentum(learning_rate=lr, chaos_punishment=adalpha_chaos_punishment)
+
+    callback = callback(adalpha_optimizer, 20)
+
+    train([], adam_optimizer)
+    train(callback, adalpha_optimizer)
+    # Train with Adam
+
+    # Set the optimizer to adam_optimizer
+    # Fit the model for the specified number of epochs using adam_optimizer
+    # Evaluate the model
+
+    # Train with AdAlpha_Momentum
+    # Set the optimizer to adalpha_optimizer
+    # Fit the model for the specified number of epochs using adalpha_optimizer
+    # Evaluate the model
+
+    # Plot and display the results
+
+    pass
 
 if __name__ == "__main__":
-    main()
+    optimizer = Adalpha.AdAlpha_Momentum(learning_rate=0.001, momentum=0.9)
+    train(Adalpha.MaxAdamCallback(optimizer),)
+

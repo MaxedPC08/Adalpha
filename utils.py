@@ -68,14 +68,16 @@ def csv_to_data(cf_name: str,
         return names, data
     return np.asarray(outer_list, dtype=dtype)
 
+
 def homo_csv(file_name, out_name):
     """
-    Homogenize CSV file and write to a new file (can be the same as the first name)
-    :param file_name: Name of the file to read
-    :param out_name: Name of the file to write to
+    Reads a file, replaces tabs with spaces, replaces double spaces with single spaces,
+    and writes the modified content to a new file.
+
+    :param file_name: Name of the input file.
+    :param out_name: Name of the output file.
     :return: None
     """
-    #Read the file to string
     file = open(file_name, "r").read()
 
     #Replace tabs with space
