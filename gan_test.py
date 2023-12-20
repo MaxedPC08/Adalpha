@@ -101,7 +101,6 @@ class RLAgent:
         This method is called when the class is constructed. It sets the simulation
         parameters, resets the training data, and loads (or creates) and compiles the NN model.
         """
-        self.reset_training_data()
         self.observation_space = obs_space
         self.action_space = acts
         self.callback = callback
@@ -114,6 +113,8 @@ class RLAgent:
         self.epochs = epochs
         self.learning_limit = learning_limit
         self.exploration_rate = exporation_rate
+        self.initial_exploration_rate = exporation_rate
+        self.reset_training_data()
 
         # load the NN model
         file_name = input("Enter name of model to load (leave blank to start fresh): ")
@@ -138,7 +139,7 @@ class RLAgent:
         """
         Resets the training data (self.memory and self.exploration_rate).
         """
-        self.exploration_rate = self.exploration_rate
+        self.exploration_rate = self.initial_exploration_rate
         self.memory = deque(maxlen=self.memory_size)
 
     def store_sim_results(self, s, r, a, ns):
@@ -283,6 +284,7 @@ def train(callback,
           learning_probability=0.7,
           epochs=10,
           learning_limit=70,
+          learning_size=500,
           learning_rate=0.001,
           gamma=0.9,
           exp_decay=0.995,
@@ -315,7 +317,18 @@ def train(callback,
     observation_space = env.observation_space.shape[0]
     action_space = env.action_space.n
     # create my agent
-    the_agent = RLAgent(observation_space, action_space, callback, optimizer, epochs=epochs, learning_size=learning_limit, learning_rate=learning_rate, gamma=gamma, memory_size=memory_size, exp_decay=exp_decay, exporation_rate=exporation_rate)
+    the_agent = RLAgent(observation_space,
+                        action_space,
+                        callback,
+                        optimizer=optimizer,
+                        epochs=epochs,
+                        learning_size=learning_size,
+                        learning_limit=learning_limit,
+                        learning_rate=learning_rate,
+                        gamma=gamma,
+                        memory_size=memory_size,
+                        exp_decay=exp_decay,
+                        exporation_rate=exporation_rate)
     # reset the simulation
     # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
     # to get the real sim_state, we need to only get the first term, and reformat the shape
@@ -459,24 +472,16 @@ def learn_test(callback, lr, adalpha_chaos_punishment, epochs=10):
 
     callback = callback(adalpha_optimizer, 20)
 
-    train([], adam_optimizer)
-    train(callback, adalpha_optimizer)
-    # Train with Adam
+    adam_results = train(callback=[], optimizer=adam_optimizer)
+    adalpha_results = train(callback=callback, optimizer=adalpha_optimizer)
 
-    # Set the optimizer to adam_optimizer
-    # Fit the model for the specified number of epochs using adam_optimizer
-    # Evaluate the model
-
-    # Train with AdAlpha_Momentum
-    # Set the optimizer to adalpha_optimizer
-    # Fit the model for the specified number of epochs using adalpha_optimizer
-    # Evaluate the model
-
-    # Plot and display the results
+    # Plot the results
+    plt.plot(adalpha_results, label="AdAlpha")
+    plt.plot(adam_results, label="Adam")
+    plt.legend()
+    plt.show()
 
     pass
 
 if __name__ == "__main__":
-    optimizer = Adalpha.AdAlpha_Momentum(learning_rate=0.001, momentum=0.9)
-    train(Adalpha.MaxAdamCallback(optimizer),)
-
+    learn_test(Adalpha.Adalpha_Callback, 0.01, 2)
