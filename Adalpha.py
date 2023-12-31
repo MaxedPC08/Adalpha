@@ -1,16 +1,10 @@
 import tensorflow as tf
 from keras.optimizers import Optimizer
-from tensorflow.python.util.tf_export import keras_export
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-@keras_export(
-    "keras.optimizers.Adam",
-    "keras.optimizers.experimental.Adam",
-    "keras.dtensor.experimental.optimizers.Adam",
-    v1=[],
-)
+
 
 
 class Adalpha(Optimizer):
@@ -158,7 +152,7 @@ class Adalpha(Optimizer):
         return config
 
 
-class AdAlpha_Momentum(Adalpha):
+class Adalpha_Momentum(Adalpha):
     """
     Optimizer for Tensorflow Keras based on the Adam optimizer. This version implements two changes:
     1: Adalpha adjusts the alpha value based on the value passed in through the update_loss method.
@@ -247,7 +241,7 @@ class Adalpha_Callback(tf.keras.callbacks.Callback):
     def _calculate_loss_std(self):
         self.a = self.ema_w * self.loss + (1-self.ema_w) * self.a
         self.b = (1 - self.ema_w) * self.loss + self.ema_w * self.b
-        self.optimizer.update_loss((self.change * self.a)/self.b)
+        self.optimizer.update_loss(new_std =  (self.change * self.a)/self.b)
 
     def on_train_batch_end(self, batch, logs=None):
         self.loss = logs["loss"]

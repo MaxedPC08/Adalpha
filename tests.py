@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 from tests_core import *
 from utils import *
 
@@ -49,95 +50,66 @@ def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_
             bike_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment))
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
-    print(np.asarray(losses))
+    return losses
 
-def adam_train_mnist(epochs=10, learning_rate=0.01):
+def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
-    Trains a neural network on the MNIST dataset using Adam optimization and Adalpha optimization.
-
-    Parameters:
-        epochs (int): The number of epochs to train for.
-        learning_rate (float): The learning rate to use.
-
-    Returns:
-        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    Main executable for the program
+    :return: None
     """
-    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    x_data = np.expand_dims(x_data, 3)
-    x_test = np.expand_dims(x_test, 3)
+    adalpha_r_2 = []
+    for val in chaos_punishment:
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
 
-    input_layer = tf.keras.layers.Input((28, 28, 1))
-    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(input_layer)
-    parallel_1 = tf.keras.layers.MaxPool2D(2)(parallel_1)
-    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(parallel_1)
-    parallel_1 = tf.keras.layers.Conv2D(32, (5, 5), activation="tanh")(parallel_1)
-    parallel_1 = tf.keras.layers.Reshape((32,))(parallel_1)
-    output = tf.keras.layers.Dense(10, activation="softmax")(parallel_1)
-
-    model = tf.keras.Model(input_layer, output)
-
-    # Train with Adalpha
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss=tf.keras.losses.sparse_categorical_crossentropy,
-                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, validation_split=0.2,
-                        verbose=False)
+    plt.clf()
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
+    plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.plot(history.history["loss"], "r-", label="Adam Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adam Val Loss")
+    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
+    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
-    y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating Adam")
-    return model.evaluate(x_test, y_test)[1], y_pred, y_test
+    plt.grid(True)
+    plt.show()
 
-def adalpha_train_mnist(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
+def bike_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99], change=0.99, chaos_punishment=2):
     """
-    Trains a neural network on the MNIST dataset using Adalpha optimization.
-
-    Parameters:
-        epochs (int): The number of epochs to train for.
-        learning_rate (float): The learning rate to use.
-        ema_w (float): The EMA weight to use.
-        change (float): The change value to use.
-        chaos_punishment (int): The chaos punishment value to use.
-
-    Returns:
-        A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
+    Main executable for the program
+    :return: None
     """
-    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    x_data = np.expand_dims(x_data, 3)
-    x_test = np.expand_dims(x_test, 3)
+    adalpha_r_2 = []
+    for val in ema_w:
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
 
-    input_layer = tf.keras.layers.Input((28, 28, 1))
-    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(input_layer)
-    parallel_1 = tf.keras.layers.MaxPool2D(2)(parallel_1)
-    parallel_1 = tf.keras.layers.Conv2D(32, (7, 7), activation="tanh")(parallel_1)
-    parallel_1 = tf.keras.layers.Conv2D(32, (5, 5), activation="tanh")(parallel_1)
-    parallel_1 = tf.keras.layers.Reshape((32,))(parallel_1)
-    output = tf.keras.layers.Dense(10, activation="softmax")(parallel_1)
-
-    model = tf.keras.Model(input_layer, output)
-
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
-
-    # Train with Adalpha
-    callbacks = [callback(my_optimizer, ema_w, change)]
-    model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
-                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
-                        verbose=False)
+    plt.clf()
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
+    plt.xlabel("ema_w")
     plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on MNIST")
-    plt.plot(history.history["loss"], "b-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "g-", label="Adalpha Val Loss")
+    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
+    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
-    adalpha_y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating Adalpha")
-    return model.evaluate(x_test, y_test)[1], adalpha_y_pred, y_test
+    plt.grid(True)
+    plt.show()
+
+def bike_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+    results = []
+    for lr in learning_rates:
+        results.append(np.mean(bike_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
+
+    results = np.asarray(results)
+    print(results)
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("lr")
+    plt.ylabel("Loss")
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on Bike Dataset")
+    plt.plot(learning_rates, results[:, 0], "r-", label="Adalpha Loss")
+    plt.plot(learning_rates, results[:, 1], "b-", label="Adam Loss")
+    plt.legend()
+    plt.show()
+    if copy:
+        pd.DataFrame(results).to_clipboard(excel=True)
 
 def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
     """
@@ -223,27 +195,8 @@ def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_
 
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
-    print(np.asarray(losses))
+    return losses
 
-
-def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
-    """
-    Main executable for the program
-    :return: None
-    """
-    adalpha_r_2 = []
-    for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
-
-    plt.clf()
-    # Graphing the Adalpha Results
-    plt.xlabel("Chaos Punishment")
-    plt.ylabel("Loss")
-    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
@@ -264,24 +217,6 @@ def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.
     plt.grid(True)
     plt.show()
 
-def bike_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99], change=0.99, chaos_punishment=2):
-    """
-    Main executable for the program
-    :return: None
-    """
-    adalpha_r_2 = []
-    for val in ema_w:
-        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
-
-    plt.clf()
-    # Graphing the Adalpha Results
-    plt.xlabel("ema_w")
-    plt.ylabel("Loss")
-    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha R2")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 def mnist_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99, chaos_punishment=2):
     """
@@ -301,57 +236,37 @@ def mnist_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[
     plt.legend()
     plt.grid(True)
     plt.show()
-def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6):
-    (x_data, y_data), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
-    input_layer = tf.keras.layers.Input((32, 32, 3))
-    model = tf.keras.layers.BatchNormalization()(input_layer)
-    model = tf.keras.layers.Conv2D(64, (5, 5), activation="relu")(model)
-    model = tf.keras.layers.MaxPool2D(2)(model)
-    model = tf.keras.layers.Conv2D(64, (5, 5), activation="relu")(model)
-    model = tf.keras.layers.Conv2D(32, (5, 5), activation="relu")(model)
-    model = tf.keras.layers.Flatten()(model)
-    model = tf.keras.layers.Dense(512, activation="relu")(model)
-    output = tf.keras.layers.Dense(10, activation="softmax")(model)
+def mnist_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+    results = []
+    for lr in learning_rates:
+        results.append(np.mean(mnist_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
 
-    model = tf.keras.Model(input_layer, output)
-
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
-
-    # Train with Adalpha
-    callbacks = [callback(my_optimizer, ema_w, change)]
-    model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
-                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, callbacks=callbacks, validation_split=0.2,
-                        verbose=False)
+    results = np.asarray(results)
+    print(results)
+    plt.clf()
     # Graphing the Adalpha Results
-    plt.xlabel("Epoch")
+    plt.xlabel("lr")
     plt.ylabel("Loss")
-    plt.title(f"Model Fitting Results at lr={learning_rate} on CIFAR")
-    plt.plot(history.history["loss"], "r-", label="Adalpha Loss")
-    plt.plot(history.history["val_loss"], "y-", label="Adalpha Val Loss")
-    adalpha_y_pred = model.predict(x_test, verbose=False)
-    print("Evaluating AdAlpha")
-    model.evaluate(x_test, y_test)
-    # Train with Adam
-    model = tf.keras.models.clone_model(model)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                  loss=tf.keras.losses.sparse_categorical_crossentropy,
-                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    history = model.fit(x_data, y_data, epochs=epochs, batch_size=2048, validation_split=0.2, verbose=False)
-    plt.plot(history.history["loss"], "g-", label="Adam Loss")
-    plt.plot(history.history["val_loss"], "b-", label="Adam Val Loss")
+    plt.xscale("log")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on MNIST")
+    plt.plot(learning_rates, results[:, 0], "r-", label="Adalpha Loss")
+    plt.plot(learning_rates, results[:, 1], "b-", label="Adam Loss")
     plt.legend()
     plt.show()
-    y_pred = model.predict(x_test, verbose=False)
+    if copy:
+        pd.DataFrame(results).to_clipboard(excel=True)
+
+def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6):
+    print("Evaluating Adalpha")
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
     print("Evaluating Adam")
-    model.evaluate(x_test, y_test)
-    # ====================
-    # USE MODEL TO PREDICT and create a scatterplot of the y and y_pred
+    acc, y_pred, y_test = adam_train_cifar(epochs, learning_rate)
+
     labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
-    heatmap_max = make_heatmap(np.argmax(adalpha_y_pred, 1), y_test)
+    heatmap_max = make_heatmap(np.argmax(adalpha_y_pred, 1), adalpha_y_test)
 
     im = ax1.imshow(heatmap_max)
 
@@ -360,9 +275,12 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, ch
     ax1.set_yticks(np.arange(len(labels)), labels=labels)
 
     # Rotate the tick labels and set their alignment.
-    plt.setp(ax1.get_xticklabels(), ha="right", rotation_mode="anchor")
+    plt.setp(ax1.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
 
-    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adalpha")
+    # Loop over data dimensions and create text annotations.
+
+    ax1.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adalpha\nOver {epochs} epochs")
 
     heatmap = make_heatmap(np.argmax(y_pred, 1), y_test)
 
@@ -378,5 +296,337 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, ch
 
     ax2.set_title(f"Predictions vs Actual at\nlr={learning_rate} from Adam\nOver {epochs} epochs")
     fig.tight_layout()
+    plt.show()
+    return adalpha_acc, acc
+
+def cifar_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+    losses = []
+    for i in range(tests):
+        losses.append(
+            cifar_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate,
+                       chaos_punishment=chaos_punishment, ema_w=ema_w, change=change))
+
+    if copy:
+        pd.DataFrame(losses).to_clipboard(excel=True)
+    return losses
+
+def cifar_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99, chaos_punishment=2):
+    """
+    Main executable for the program
+    :return: None
+    """
+    adalpha_r_2 = []
+    for val in ema_w:
+        adalpha_r_2.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
+
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("ema_w")
+    plt.ylabel("Loss")
+    plt.title(f"Accuracy vs Ema_w\nOver {epochs} epochs")
+    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha Acc")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def cifar_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+    """
+    Main executable for the program
+    :return: None
+    """
+    adalpha_r_2 = []
+    for val in chaos_punishment:
+        adalpha_r_2.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
+
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("Chaos Punishment")
+    plt.ylabel("Loss")
+    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
+    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+def cifar_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+    results = []
+    for lr in learning_rates:
+        results.append(np.mean(cifar_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
+
+    results = np.asarray(results)
+    print(results)
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("lr")
+    plt.ylabel("Loss")
+    plt.xscale("log")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on CIFAR")
+    plt.plot(learning_rates, results[:, 0], "r-", label="Adalpha Loss")
+    plt.plot(learning_rates, results[:, 1], "b-", label="Adam Loss")
     plt.legend()
     plt.show()
+    if copy:
+        pd.DataFrame(results).to_clipboard(excel=True)
+
+def cartpole_test(callback,
+                  optimizer,
+                  epochs=50,
+                  learning_rate=0.01,
+                  ema_w=0.99,
+                  change=0.99,
+                  chaos_punishment=2,
+                  memory_size=10000,
+                  cycles=15,
+                  tests=10,
+                  learning_probability=0.7,
+                  learning_size=400,
+                  rl_learning_rate=0.2,
+                  gamma=0.9,
+                  exp_decay=0.995,
+                  exploration_rate=0.8):
+    """
+    Executes the cartpole test with the given parameters.
+
+    Args:
+        callback (object): The callback object for the optimizer.
+        optimizer (object): The optimizer object.
+        epochs (int, optional): The number of epochs to run the test. Defaults to 50.
+        learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
+        ema_w (float, optional): The exponential moving average weight for the callback. Defaults to 0.99.
+        change (float, optional): The change threshold for the callback. Defaults to 0.99.
+        chaos_punishment (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
+        memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
+        cycles (int, optional): The number of cycles to run the test. Defaults to 30.
+        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
+        learning_size (int, optional): The size of the learning set. Defaults to 400.
+        rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
+        gamma (float, optional): The discount factor for the reinforcement learning optimizer. Defaults to 0.9.
+        exp_decay (float, optional): The decay rate for the exploration factor. Defaults to 0.995.
+        exploration_rate (float, optional): The exploration rate for the reinforcement learning optimizer. Defaults to 0.8.
+
+    Returns:
+        object: The AdAlpha optimizer object.
+        object: The Adam optimizer object.
+    """
+    # Set up your data and model here
+
+    # Create the Adam optimizer
+    adam_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+
+    # Create the AdAlpha_Momentum optimizer
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+
+    callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
+
+    adam_results = train(callback=[],
+                         optimizer=adam_optimizer,
+                         memory_size=memory_size,
+                         cycles=cycles,
+                         epochs=epochs,
+                         tests=tests,
+                         learning_probability=learning_probability,
+                         learning_size=learning_size,
+                         learning_rate=rl_learning_rate,
+                         gamma=gamma,
+                         exp_decay=exp_decay,
+                         exploration_rate=exploration_rate)
+
+    adalpha_results = train(callback=callback,
+                            optimizer=adalpha_optimizer,
+                            memory_size=memory_size,
+                            cycles=cycles,
+                            epochs=epochs,
+                            tests=tests,
+                            learning_probability=learning_probability,
+                            learning_size=learning_size,
+                            learning_rate=rl_learning_rate,
+                            gamma=gamma,
+                            exp_decay=exp_decay,
+                            exploration_rate=exploration_rate)
+
+    # Plot the results
+    plt.plot(adalpha_results, label="AdAlpha")
+    plt.plot(adam_results, label="Adam")
+    plt.legend()
+    plt.show()
+
+    return adalpha_results, adam_results
+
+def cartpole_multiple_test(callback,
+                  optimizer,
+                  epochs=50,
+                  learning_rate=0.01,
+                  ema_w=0.99,
+                  change=0.99,
+                  chaos_punishment=2,
+                  memory_size=1000,
+                  cycles=30,
+                  rl_tests=10,
+                  learning_probability=0.7,
+                  learning_size=400,
+                  rl_learning_rate=0.2,
+                  gamma=0.9,
+                  exp_decay=0.995,
+                  exploration_rate=0.8,
+                  tests=10,
+                  copy=True):
+    """
+        A function that performs multiple tests of the CartPole environment using a given callback and optimizer.
+
+        Parameters:
+            callback (object): The callback function to be used for training.
+            optimizer (object): The optimizer object to be used for training.
+            epochs (int, optional): The number of epochs to train. Defaults to 50.
+            learning_rate (float, optional): The learning rate for the optimizer. Defaults to 0.01.
+            ema_w (float, optional): The exponential moving average weight for the optimizer. Defaults to 0.99.
+            change (float, optional): The change threshold for the optimizer. Defaults to 0.99.
+            chaos_punishment (int, optional): The punishment factor for chaos state. Defaults to 2.
+            memory_size (int, optional): The size of the replay memory. Defaults to 10000.
+            cycles (int, optional): The number of cycles for training. Defaults to 30.
+            rltests (int, optional): The number of tests for reinforcement learning. Defaults to 10.
+            learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
+            learning_size (int, optional): The size of the learning set during training. Defaults to 400.
+            rl_learning_rate (float, optional): The learning rate for reinforcement learning. Defaults to 0.2.
+            gamma (float, optional): The discount factor for reinforcement learning. Defaults to 0.9.
+            exp_decay (float, optional): The exponential decay rate for exploration rate. Defaults to 0.995.
+            exploration_rate (float, optional): The exploration rate for reinforcement learning. Defaults to 0.8.
+            tests (int, optional): The number of tests to perform. Defaults to 10.
+            copy (bool, optional): Whether to copy the results to the clipboard. Defaults to True.
+
+        Returns:
+            list: A list of losses obtained from each test.
+    """
+
+    losses = []
+    for i in range(tests):
+        adalpha_results, adam_results = cartpole_test(callback=callback,
+                                                      optimizer=optimizer,
+                                                      learning_rate=learning_rate,
+                                                      ema_w=ema_w,
+                                                      change=change,
+                                                      chaos_punishment=chaos_punishment,
+                                                      tests=rl_tests,
+                                                      memory_size=memory_size,
+                                                      cycles=cycles,
+                                                      epochs=epochs,
+                                                      learning_probability=learning_probability,
+                                                      learning_size=learning_size,
+                                                      rl_learning_rate=rl_learning_rate,
+                                                      gamma=gamma,
+                                                      exp_decay=exp_decay,
+                                                      exploration_rate=exploration_rate)
+        losses.append([np.mean(adalpha_results), np.max(adalpha_results), np.min(adalpha_results), np.mean(adam_results), np.max(adam_results), np.min(adam_results)])
+
+    plt.plot(losses, label=["Adalpha Mean", "Adalpha Max", "Adalpha Min", "Adam Mean", "Adam Max", "Adam Min"])
+    plt.legend()
+    plt.title("CartPole Test Results")
+    plt.show()
+    if copy:
+        pd.DataFrame(np.asarray(losses)[:, [0, 3]]).to_clipboard(excel=True)
+    return losses
+
+def cartpole_ema_w_test(callback,
+                  optimizer,
+                  epochs=50,
+                  learning_rate=0.01,
+                  ema_w=[0.99],
+                  change=0.99,
+                  chaos_punishment=2,
+                  memory_size=10000,
+                  cycles=30,
+                  rl_tests=10,
+                  learning_probability=0.7,
+                  learning_size=400,
+                  rl_learning_rate=0.2,
+                  gamma=0.9,
+                  exp_decay=0.995,
+                  exploration_rate=0.8,
+                  copy=True):
+    results = []
+    for weight in ema_w:
+        results.append(np.mean(
+            adalpha_train_cartpole(callback=callback,
+                                                      optimizer=optimizer,
+                                                      learning_rate=learning_rate,
+                                                      ema_w=weight,
+                                                      change=change,
+                                                      chaos_punishment=chaos_punishment,
+                                                      tests=rl_tests,
+                                                      memory_size=memory_size,
+                                                      cycles=cycles,
+                                                      epochs=epochs,
+                                                      learning_probability=learning_probability,
+                                                      learning_size=learning_size,
+                                                      rl_learning_rate=rl_learning_rate,
+                                                      gamma=gamma,
+                                                      exp_decay=exp_decay,
+                                                      exploration_rate=exploration_rate), axis=0))
+
+    results = np.asarray(results)
+    print(results)
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("lr")
+    plt.ylabel("Loss")
+    plt.xscale("log")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on CIFAR")
+    plt.plot(ema_w, results[:, 0], "r-", label="Adalpha Loss")
+    plt.plot(ema_w, results[:, 1], "b-", label="Adam Loss")
+    plt.legend()
+    plt.show()
+    if copy:
+        pd.DataFrame(results).to_clipboard(excel=True)
+
+def cartpole_change_test(callback,
+                  optimizer,
+                  epochs=50,
+                  learning_rate=0.01,
+                  ema_w=0.99,
+                  change=[0.8, 0.99],
+                  chaos_punishment=2,
+                  memory_size=10000,
+                  cycles=30,
+                  rl_tests=10,
+                  learning_probability=0.7,
+                  learning_size=400,
+                  rl_learning_rate=0.2,
+                  gamma=0.9,
+                  exp_decay=0.995,
+                  exploration_rate=0.8,
+                  copy=True):
+    results = []
+    for val in change:
+        results.append(np.mean(
+            adalpha_train_cartpole(callback=callback,
+                                                      optimizer=optimizer,
+                                                      learning_rate=learning_rate,
+                                                      ema_w=ema_w,
+                                                      change=val,
+                                                      chaos_punishment=chaos_punishment,
+                                                      tests=rl_tests,
+                                                      memory_size=memory_size,
+                                                      cycles=cycles,
+                                                      epochs=epochs,
+                                                      learning_probability=learning_probability,
+                                                      learning_size=learning_size,
+                                                      rl_learning_rate=rl_learning_rate,
+                                                      gamma=gamma,
+                                                      exp_decay=exp_decay,
+                                                      exploration_rate=exploration_rate), axis=0))
+
+    results = np.asarray(results)
+    print(results)
+    plt.clf()
+    # Graphing the Adalpha Results
+    plt.xlabel("lr")
+    plt.ylabel("Loss")
+    plt.xscale("log")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on CIFAR")
+    plt.plot(ema_w, results[:, 0], "r-", label="Adalpha Loss")
+    plt.plot(ema_w, results[:, 1], "b-", label="Adam Loss")
+    plt.legend()
+    plt.show()
+    if copy:
+        pd.DataFrame(results).to_clipboard(excel=True)

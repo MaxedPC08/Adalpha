@@ -95,8 +95,7 @@ class RLAgent:
                  learning_rate:float,
                  gamma:float,
                  epochs:int,
-                 learning_limit:int,
-                 exporation_rate:float):
+                 exploration_rate:float):
         """
         This method is called when the class is constructed. It sets the simulation
         parameters, resets the training data, and loads (or creates) and compiles the NN model.
@@ -111,23 +110,19 @@ class RLAgent:
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.epochs = epochs
-        self.learning_limit = learning_limit
-        self.exploration_rate = exporation_rate
-        self.initial_exploration_rate = exporation_rate
+        self.exploration_rate = exploration_rate
+        self.initial_exploration_rate = exploration_rate
         self.reset_training_data()
 
         # load the NN model
-        file_name = input("Enter name of model to load (leave blank to start fresh): ")
-        if file_name != "":
-            self.model = tf.keras.models.load_model(file_name, custom_objects={"max_exp_layer": MaxExpLayer}) # , custom_objects={"MaxExpLayer": MaxExpLayer}
-        else:
-            in_layer = tf.keras.layers.Input(shape=(self.observation_space,))
-            model = MaxExpLayer()(in_layer)
-            model = tf.keras.layers.Dense(25,
-                        activation=tf.nn.tanh,
-                        use_bias=True)(model)
-            model = tf.keras.layers.Dense(self.action_space, activation="linear", use_bias=False)(model)
-            self.model = tf.keras.Model(in_layer, model)
+
+        in_layer = tf.keras.layers.Input(shape=(self.observation_space,))
+        model = MaxExpLayer()(in_layer)
+        model = tf.keras.layers.Dense(25,
+                    activation=tf.nn.tanh,
+                    use_bias=True)(model)
+        model = tf.keras.layers.Dense(self.action_space, activation="linear", use_bias=False)(model)
+        self.model = tf.keras.Model(in_layer, model)
 
         self.model.compile(
             loss="mean_squared_error",
@@ -190,6 +185,7 @@ class RLAgent:
             self.model.fit(
                 states_batch,
                 nn_outs,
+                batch_size=self.learning_size,
                 epochs=1,
                 verbose=0,
                 callbacks=self.callback
@@ -245,7 +241,6 @@ class RLAgent:
         # exploring
         if np.random.rand() <= self.exploration_rate:
             an_action = r.choice([0, 1])
-            # you can chose to use a different algorithm to better train your model
             return an_action
 
         # exploiting
@@ -279,16 +274,15 @@ def calc_reward(state: np.ndarray, reward: float, sim_step: int, next_state: np.
 def train(callback,
           optimizer,
           memory_size=10000,
-          cycles=20,
+          cycles=30,
           tests=10,
           learning_probability=0.7,
           epochs=10,
-          learning_limit=70,
-          learning_size=500,
-          learning_rate=0.001,
+          learning_size=400,
+          learning_rate=0.2,
           gamma=0.9,
           exp_decay=0.995,
-          exporation_rate=0.5):
+          exploration_rate=0.8):
     """
     Trains a reinforcement learning agent using the given callback function, optimizer, and hyperparameters.
 
@@ -312,7 +306,7 @@ def train(callback,
     # setup the simulation
     env = gym.make(
         ENV_NAME)  # include render_mode="human" if you want to see the action
-    env._max_episode_steps = 2000  # this is our ultimate goal...
+    env._max_episode_steps = 1000  # this is our ultimate goal...
     # get size of observation (states) and action spaces
     observation_space = env.observation_space.shape[0]
     action_space = env.action_space.n
@@ -323,12 +317,11 @@ def train(callback,
                         optimizer=optimizer,
                         epochs=epochs,
                         learning_size=learning_size,
-                        learning_limit=learning_limit,
                         learning_rate=learning_rate,
                         gamma=gamma,
                         memory_size=memory_size,
                         exp_decay=exp_decay,
-                        exporation_rate=exporation_rate)
+                        exploration_rate=exploration_rate)
     # reset the simulation
     # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
     # to get the real sim_state, we need to only get the first term, and reformat the shape
@@ -337,7 +330,7 @@ def train(callback,
 
     # Create some preliminary training data
 
-    for sim_run in range(memory_size//10):
+    for sim_run in range(learning_size):
         # reset the simulation
         sim_state = env.reset()
         # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
@@ -396,8 +389,7 @@ def train(callback,
             sim_state_next, reward, sim_done, truncated, info = env.step(action)
             sim_state_next = np.reshape(sim_state_next, [1, observation_space])
             the_agent.store_sim_results(sim_state, calc_reward(sim_state, reward, sim_step, sim_state_next), action, sim_state_next)
-            print(sim_step)
-            if sim_step>10:
+            if sim_step>1000:
                 sim_done = True
 
             if sim_done:
@@ -419,16 +411,16 @@ def train(callback,
     print("GYM CartPole Training successfully completed.")
 
     # save the trained NN
-    the_agent.save()
 
     env = gym.make(
         ENV_NAME,
         render_mode="human")
 
     # Now use our model to show how well it does (or doesn't)
+    seeds = [123, 23, 34, 45, 56, 67, 78, 89, 90, 100]
     results = []
     for trial_num in range(tests):
-        sim_state = env.reset()
+        sim_state = env.reset(seed = seeds[trial_num])
         env._max_episode_steps = 2000
         sim_state = np.reshape(sim_state[0], [1, observation_space])
         sim_done = False
@@ -443,37 +435,87 @@ def train(callback,
                 sim_done = True
             if sim_done:
                 results.append(sim_step)
-                print(".")
                 print("Trial:", trial_num, ".   Done after ", sim_step, " steps.")
     env.close()
+    del the_agent
     return results
 
-def learn_test(callback, lr, adalpha_chaos_punishment, epochs=10):
+def cartpole_test(callback,
+                  optimizer,
+                  epochs=50,
+                  learning_rate=0.01,
+                  ema_w=0.99,
+                  change=0.99,
+                  chaos_punishment=2,
+                  memory_size=10000,
+                  cycles=30,
+                  tests=10,
+                  learning_probability=0.7,
+                  learning_size=400,
+                  rl_learning_rate=0.2,
+                  gamma=0.9,
+                  exp_decay=0.995,
+                  exploration_rate=0.8):
     """
-    This function tests the effect of the AdAlpha_Momentum optimizer on the reinforcement learning problem.
+    Executes the cartpole test with the given parameters.
 
     Args:
-        callback: the callback
-        adam_lr: the learning rate for the Adam optimizer
-        adalpha_lr: the learning rate for the AdAlpha_Momentum optimizer
-        adalpha_chaos_punishment: the chaos punishment value for the AdAlpha_Momentum optimizer
-        epochs: the number of epochs to train for
+        callback (object): The callback object for the optimizer.
+        optimizer (object): The optimizer object.
+        epochs (int, optional): The number of epochs to run the test. Defaults to 50.
+        learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
+        ema_w (float, optional): The exponential moving average weight for the callback. Defaults to 0.99.
+        change (float, optional): The change threshold for the callback. Defaults to 0.99.
+        chaos_punishment (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
+        memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
+        cycles (int, optional): The number of cycles to run the test. Defaults to 30.
+        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
+        learning_size (int, optional): The size of the learning set. Defaults to 400.
+        rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
+        gamma (float, optional): The discount factor for the reinforcement learning optimizer. Defaults to 0.9.
+        exp_decay (float, optional): The decay rate for the exploration factor. Defaults to 0.995.
+        exploration_rate (float, optional): The exploration rate for the reinforcement learning optimizer. Defaults to 0.8.
 
     Returns:
-        None
+        object: The AdAlpha optimizer object.
+        object: The Adam optimizer object.
     """
     # Set up your data and model here
 
     # Create the Adam optimizer
-    adam_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+    adam_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     # Create the AdAlpha_Momentum optimizer
-    adalpha_optimizer = Adalpha.AdAlpha_Momentum(learning_rate=lr, chaos_punishment=adalpha_chaos_punishment)
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
 
-    callback = callback(adalpha_optimizer, 20)
+    callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
 
-    adam_results = train(callback=[], optimizer=adam_optimizer)
-    adalpha_results = train(callback=callback, optimizer=adalpha_optimizer)
+    adam_results = train(callback=[],
+                         optimizer=adam_optimizer,
+                         memory_size=memory_size,
+                         cycles=cycles,
+                         epochs=epochs,
+                         tests=tests,
+                         learning_probability=learning_probability,
+                         learning_size=learning_size,
+                         learning_rate=rl_learning_rate,
+                         gamma=gamma,
+                         exp_decay=exp_decay,
+                         exploration_rate=exploration_rate)
+
+    adalpha_results = train(callback=callback,
+                            optimizer=adalpha_optimizer,
+                            memory_size=memory_size,
+                            cycles=cycles,
+                            epochs=epochs,
+                            tests=tests,
+                            learning_probability=learning_probability,
+                            learning_size=learning_size,
+                            learning_rate=rl_learning_rate,
+                            gamma=gamma,
+                            exp_decay=exp_decay,
+                            exploration_rate=exploration_rate)
 
     # Plot the results
     plt.plot(adalpha_results, label="AdAlpha")
@@ -481,7 +523,5 @@ def learn_test(callback, lr, adalpha_chaos_punishment, epochs=10):
     plt.legend()
     plt.show()
 
-    pass
+    return adalpha_optimizer, adam_optimizer
 
-if __name__ == "__main__":
-    learn_test(Adalpha.Adalpha_Callback, 0.01, 2)
