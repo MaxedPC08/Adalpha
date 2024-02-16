@@ -4,7 +4,7 @@ Adalpha
 Have you ever wondered "Is there a better optimizer than Adam that helps avoid model collapse?"
 The answer is yes! Adalpha is an optimizer designed to help avoid model collapse and improve generalization, and it is very closely based on Adam. 
 It calculates the change in the loss over an arbitrary amount of time, and updates alpha accordingly, thus the name. 
-This scaling and moving averages are controlled is controlled by the parameter beta3 and beta4. 
+This scaling and moving averages are controlled is controlled by the parameter `ema_w`. 
 Aside from simply adjusting the learning rate, Adalpha gently boosts the momentum and velocity of weights with lower than average momentum and velocity, theoretically encouraging them to learn.
 The result is an optimizer that is able to adapt the learning rate to the local geometry of the loss landscape, 
 which helps avoid model collapse and improve generalization.
