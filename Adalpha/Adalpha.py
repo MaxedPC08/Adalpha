@@ -3,10 +3,6 @@ from keras.optimizers import Optimizer
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
-
-
 class AdalphaBase(Optimizer):
     r"""Base class - do not use (yet)
     """
@@ -15,7 +11,6 @@ class AdalphaBase(Optimizer):
             self,
             learning_rate=0.001,
             adjustment_exp=1,
-            alpha_ema_w=0.9,
             beta_1=0.9,
             beta_2=0.999,
             epsilon=1e-7,
@@ -29,6 +24,8 @@ class AdalphaBase(Optimizer):
             ema_overwrite_frequency=None,
             jit_compile=True,
             name="Adam",
+            ema_w=0.9,
+            change=1,
             **kwargs
     ):
         super().__init__(
@@ -50,6 +47,11 @@ class AdalphaBase(Optimizer):
         self.amsgrad = amsgrad
         self.chaos_punish = adjustment_exp
         self.std = 1.0
+        self.loss = 1
+        self.ema_w = ema_w
+        self.change = change
+        self.a = 1
+        self.b = 1
 
     def build(self, var_list):
         """Initialize optimizer variables.
@@ -86,7 +88,10 @@ class AdalphaBase(Optimizer):
                     )
                 )
 
-    def update_loss(self, new_std: float):
+    def update_loss(self, loss: float):
+        self.a = self.ema_w * loss + (1 - self.ema_w) * self.a
+        self.b = (1 - self.ema_w) * loss + self.ema_w * self.b
+        new_std=(self.change * self.a) / self.b
         self.std = new_std
 
     def update_step(self, gradient, variable):
@@ -231,61 +236,34 @@ class AdalphaCallback(tf.keras.callbacks.Callback):
     Uses a ratio of two weighted exponential moving averages of the loss of the model.
     Experimental"""
 
-    def __init__(self, optimizer: Adalpha, ema_w, change=0.99):
+    def __init__(self, optimizer: Adalpha):
         super().__init__()
         self.optimizer = optimizer
-        self.loss = 1
-        self.ema_w = ema_w
-        self.change = change
-        self.a = 1
-        self.b = 1
-
-    def _calculate_loss_std(self):
-        self.a = self.ema_w * self.loss + (1-self.ema_w) * self.a
-        self.b = (1 - self.ema_w) * self.loss + self.ema_w * self.b
-        self.optimizer.update_loss(new_std =  (self.change * self.a)/self.b)
 
     def on_train_batch_end(self, batch, logs=None):
-        self.loss = logs["loss"]
-        self._calculate_loss_std()
+        loss = logs["loss"]
+        self.optimizer.update_loss(loss)
 
 class AdalphaPlot(AdalphaCallback):
-    def __init__(self, optimizer: Adalpha, ema_w, change=0.99):
-        super().__init__(optimizer, ema_w, change)
+    def __init__(self, optimizer: Adalpha):
+        super().__init__(optimizer)
         self.stds = [0]
 
-    def _calculate_loss_std(self):
-        self.a = self.ema_w * self.loss + (1-self.ema_w) * self.a
-        self.b = (1 - self.ema_w) * self.loss + self.ema_w * self.b
-        self.stds.append(self.optimizer.learning_rate * (self.change * self.a)/self.b)
-        self.optimizer.update_loss((self.change * self.a) / self.b)
+    def _calculate_loss_std(self, loss):
+        self.a = self.optimizer.ema_w * loss + (1-self.optimizer.ema_w) * self.optimizer.a
+        self.b = (1 - self.optimizer.ema_w) * loss + self.optimizer.ema_w * self.optimizer.b
+        self.stds.append(self.optimizer.learning_rate * (self.optimizer.change * self.a)/self.b)
 
     def on_train_end(self, logs=None):
+        loss = logs["loss"]
+        self.optimizer.update_loss(loss)
+        self._calculate_loss_std(loss)
+
         plt.clf()
-        plt.title(f"Adalpha Alpha, ema_w = {self.ema_w}, change = {self.change}")
+        plt.title(f"Adalpha Alpha, ema_w = {self.optimizer.ema_w}, change = {self.optimizer.change}")
         plt.plot(self.stds, "r-", label="Adalpha Alpha")
         plt.xlabel("Batch")
         plt.ylabel("Alpha")
         plt.legend()
         plt.show()
-        print(f"Ema_w = {self.ema_w}, Change = {self.change}, r mean = {np.mean(self.stds)/self.optimizer.learning_rate}")
-
-
-
-class OneCallback(tf.keras.callbacks.Callback):
-    """A class that updates the loss of the Max_Adam optimizer"""
-
-    def __init__(self, optimizer: Adalpha, num_to_hold):
-        super().__init__()
-        self.optimizer = optimizer
-        self.losses = []
-        self.hold = num_to_hold
-        self.std = 0.0
-
-    def _calculate_loss_std(self):
-        self.optimizer.update_loss(0.0)
-
-    def on_train_batch_end(self, batch, logs=None):
-        self.losses.append(logs["loss"])
-        self.losses = self.losses[-self.hold:]
-        self._calculate_loss_std()
+        print(f"Ema_w = {self.optimizer.ema_w}, Change = {self.optimizer.change}, r mean = {np.mean(self.stds)/self.optimizer.learning_rate}")

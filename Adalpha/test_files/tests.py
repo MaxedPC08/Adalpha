@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 
-from tests_core import *
-from utils import *
+from Adalpha.test_files.tests_core import *
+from Adalpha.utils import *
+import pandas as pd
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
@@ -39,7 +40,7 @@ def bike_multiple_test(callback,
                        tests=10,
                        copy=False):
     """
-    Performs multiple tests on the bike data using the given parameters.
+    Performs multiple test_files on the bike data using the given parameters.
 
     Parameters:
         callback (function): The chaos callback function to use.
@@ -49,7 +50,7 @@ def bike_multiple_test(callback,
         ema_w (float): The EMA weight to use.
         change (float): The change value to use.
         adjustment_exp (int): The chaos punishment value to use.
-        tests (int): The number of tests to run.
+        tests (int): The number of test_files to run.
         copy (bool): Whether to copy the results to the clipboard in Excel format.
 
     Returns:
@@ -224,7 +225,7 @@ def mnist_multiple_test(callback,
                         tests=10,
                         copy=False):
     """
-    Runs multiple tests of the MNIST_test function.
+    Runs multiple test_files of the MNIST_test function.
 
     Parameters:
         callback (object): The chaos callback function to use.
@@ -234,7 +235,7 @@ def mnist_multiple_test(callback,
         ema_w (float): The EMA weight to use.
         change (float): The change value to use.
         adjustment_exp (int): The chaos punishment value to use.
-        tests (int): The number of tests to run.
+        tests (int): The number of test_files to run.
         copy (bool): Whether to copy the results to the clipboard in Excel format.
 
     Returns:
@@ -291,6 +292,7 @@ def mnist_ema_w_test(callback,
     Main executable for the program
     :return: None
     """
+    print("running")
     adalpha_r_2 = []
     for val in ema_w:
         adalpha_r_2.append(np.mean([adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs,
@@ -494,7 +496,7 @@ def cartpole_test(callback,
         adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
-        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        tests (int, optional): The number of test_files to run per cycle. Defaults to 10.
         learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
         learning_size (int, optional): The size of the learning set. Defaults to 400.
         rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
@@ -572,7 +574,7 @@ def cartpole_multiple_test(callback,
                   copy=True,
                   max_steps=500):
     """
-        A function that performs multiple tests of the CartPole environment using a given callback and optimizer.
+        A function that performs multiple test_files of the CartPole environment using a given callback and optimizer.
 
         Parameters:
             callback (object): The callback function to be used for training.
@@ -584,14 +586,14 @@ def cartpole_multiple_test(callback,
             adjustment_exp (int, optional): The punishment factor for chaos state. Defaults to 2.
             memory_size (int, optional): The size of the replay memory. Defaults to 10000.
             cycles (int, optional): The number of cycles for training. Defaults to 30.
-            rltests (int, optional): The number of tests for reinforcement learning. Defaults to 10.
+            rltests (int, optional): The number of test_files for reinforcement learning. Defaults to 10.
             learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
             learning_size (int, optional): The size of the learning set during training. Defaults to 400.
             rl_learning_rate (float, optional): The learning rate for reinforcement learning. Defaults to 0.2.
             gamma (float, optional): The discount factor for reinforcement learning. Defaults to 0.9.
             exp_decay (float, optional): The exponential decay rate for exploration rate. Defaults to 0.995.
             exploration_rate (float, optional): The exploration rate for reinforcement learning. Defaults to 0.8.
-            tests (int, optional): The number of tests to perform. Defaults to 10.
+            tests (int, optional): The number of test_files to perform. Defaults to 10.
             copy (bool, optional): Whether to copy the results to the clipboard. Defaults to True.
 
         Returns:

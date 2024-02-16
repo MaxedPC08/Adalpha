@@ -1,12 +1,10 @@
 import csv
-
-import matplotlib.pyplot as plt
+import tensorflow as tf
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
-import tensorflow as tf
-
 import Adalpha as AA
+import matplotlib.pyplot as plt
+
 
 class String_Verifier:
     """

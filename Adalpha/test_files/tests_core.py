@@ -1,7 +1,8 @@
 from numpy import ndarray, dtype, generic
 from typing import Tuple, Any
-
-from cartpole import *
+from Adalpha import Adalpha as AA
+from Adalpha.utils import *
+from Adalpha.test_files.cartpole import *
 
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
@@ -115,8 +116,8 @@ def adalpha_train_bike(
     model = tf.keras.Model(input_layer, model)
 
     # Train with Adalpha
-    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
-    callbacks = [callback(my_optimizer, ema_w, change)]
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp, ema_w=ema_w, change=change)
+    callbacks = [callback(my_optimizer)]
 
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(
@@ -180,7 +181,7 @@ def adalpha_new_train_bike(
     y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
     x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
 
-    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp, ema_w=ema_w, change=change)
 
     # Create Model
     input_layer = tf.keras.layers.Input(shape=(15))
@@ -196,7 +197,7 @@ def adalpha_new_train_bike(
 
 
     # Train with Adalpha
-    callbacks = [callback(my_optimizer, 20, ema_w, change)]
+    callbacks = [callback(my_optimizer)]
     model.compile(optimizer=my_optimizer, loss="mse")
     history = model.fit(x_data, y_data, epochs=epochs, batch_size=128, callbacks=callbacks, validation_split=0.2,
                         verbose=False)
@@ -284,8 +285,8 @@ def adalpha_train_mnist(
     model = tf.keras.Model(input_layer, output)
 
     # Train with Adalpha
-    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
-    callbacks = [callback(my_optimizer, ema_w=ema_w, change=change)]
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp, ema_w=ema_w, change=change)
+    callbacks = [callback(my_optimizer)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(x_data,
@@ -402,8 +403,8 @@ def adalpha_train_cifar(
 
     model = tf.keras.Model(input_layer, output)
 
-    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
-    callbacks = [callback(my_optimizer, ema_w=ema_w, change=change)]
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp, ema_w=ema_w, change=change)
+    callbacks = [callback(my_optimizer)]
 
     model.compile(optimizer=my_optimizer,
                   loss=tf.keras.losses.sparse_categorical_crossentropy,
@@ -448,7 +449,7 @@ def adam_train_cartpole(epochs=50,
         learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
-        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        tests (int, optional): The number of test_files to run per cycle. Defaults to 10.
         learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
         learning_size (int, optional): The size of the learning set. Defaults to 400.
         rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
@@ -520,7 +521,7 @@ def adalpha_train_cartpole(callback: AA.AdalphaCallback,
         adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
-        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        tests (int, optional): The number of test_files to run per cycle. Defaults to 10.
         learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
         learning_size (int, optional): The size of the learning set. Defaults to 400.
         rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
@@ -532,9 +533,9 @@ def adalpha_train_cartpole(callback: AA.AdalphaCallback,
         list: The results of the test.
     """
     # Create the AdAlpha_Momentum optimizer
-    adalpha_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp, ema_w=ema_w, change=change)
 
-    callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
+    callback = callback(adalpha_optimizer)
 
     adalpha_results = train(callback=callback,
                             optimizer=adalpha_optimizer,

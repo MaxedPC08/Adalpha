@@ -1,0 +1,4 @@
+# Ignore Python build artifacts
+build/
+*.egg-info/
+main.py

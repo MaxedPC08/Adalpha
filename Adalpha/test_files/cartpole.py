@@ -14,9 +14,8 @@ import random as r
 from collections import deque
 import numpy as np
 import gymnasium as gym
-import Adalpha
-from utils import *
-
+import tensorflow as tf
+import matplotlib.pyplot as plt
 
 ENV_NAME = "CartPole-v1"
 
@@ -294,7 +293,7 @@ def train(callback,
     - optimizer: An optimizer object used for updating the agent's model parameters.
     - memory_size: The size of the agent's memory buffer (default: 10000).
     - cycles: The number of training cycles/runs (default: 20).
-    - tests: The number of test trials to run after training (default: 10).
+    - test_files: The number of test trials to run after training (default: 10).
     - learning_probability: The probability of performing a learning update during each simulation step (default: 0.7).
     - epochs: The number of epochs to train the agent's model during each learning update (default: 10).
     - learning_limit: The maximum number of recent experiences to use for learning (default: 70).
@@ -474,7 +473,7 @@ def cartpole_test(callback,
         adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
-        tests (int, optional): The number of tests to run per cycle. Defaults to 10.
+        tests (int, optional): The number of test_files to run per cycle. Defaults to 10.
         learning_probability (float, optional): The probability of learning during training. Defaults to 0.7.
         learning_size (int, optional): The size of the learning set. Defaults to 400.
         rl_learning_rate (float, optional): The learning rate for the reinforcement learning optimizer. Defaults to 0.2.
