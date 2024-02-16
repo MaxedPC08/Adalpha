@@ -1,4 +1,0 @@
-numpy
-tensorflow>=2.14
-pandas
-matplotlib
