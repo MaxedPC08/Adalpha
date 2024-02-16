@@ -9,4 +9,4 @@ from tests import *
 import Adalpha as AA
 
 if __name__ == "__main__":
-    cartpole_multiple_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, exploration_rate=0.4, epochs=10, learning_rate=0.0001, chaos_punishment=2, ema_w=0.8, change=0.95, cycles=10, copy=True)
+    mnist_ema_w_test(AA.AdalphaCallback, AA.Adalpha, epochs=50, learning_rate=0.01, adjustment_exp=2, ema_w=[0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99], tests=1, change=1)

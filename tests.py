@@ -6,11 +6,14 @@ from utils import *
 FILE_NAME = "SeoulBikeData.csv"
 SPLIT = 0.67
 
-def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=7):
+def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99, adjustment_exp=7):
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title(f"Model Fitting Results at lr={learning_rate} on Bike Data")
-    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
+    adalpha_r_2, adalpha_y_pred, adalpha_y_test = adalpha_train_bike(callback=callback, optimizer=optimizer,
+                                                                     epochs=epochs, learning_rate=learning_rate,
+                                                                     adjustment_exp=adjustment_exp, ema_w=ema_w,
+                                                                     change=change)
     r_2, y_pred, y_test= adam_train_bike(epochs, learning_rate)
     plt.legend()
     plt.show()
@@ -26,7 +29,15 @@ def bike_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, ch
     print(f"Adalpha r squared score: {adalpha_r_2}\nAdam r squared score: {r_2}")
     return adalpha_r_2, r_2
 
-def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_w=0.9, change=0.99,  chaos_punishment=6, tests=10, copy=False):
+def bike_multiple_test(callback,
+                       optimizer,
+                       epochs=100,
+                       learning_rate=0.01,
+                       ema_w=0.9,
+                       change=0.99,
+                       adjustment_exp=6,
+                       tests=10,
+                       copy=False):
     """
     Performs multiple tests on the bike data using the given parameters.
 
@@ -37,7 +48,7 @@ def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_
         learning_rate (float): The learning rate to use.
         ema_w (float): The EMA weight to use.
         change (float): The change value to use.
-        chaos_punishment (int): The chaos punishment value to use.
+        adjustment_exp (int): The chaos punishment value to use.
         tests (int): The number of tests to run.
         copy (bool): Whether to copy the results to the clipboard in Excel format.
 
@@ -47,38 +58,55 @@ def bike_multiple_test(callback, optimizer, epochs=100, learning_rate=0.01, ema_
     losses = []
     for i in range(tests):
         losses.append(
-            bike_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment))
+            bike_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate,
+                      ema_w=ema_w, change=change, adjustment_exp=adjustment_exp))
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     return losses
 
-def bike_chaos_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def bike_chaos_test(callback,
+                    optimizer,
+                    epochs=50,
+                    learning_rate=0.01,
+                    ema_w=0.9,
+                    change=0.99,
+                    adjustment_exp=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
-    for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
+    for val in adjustment_exp:
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs,
+                                              learning_rate=learning_rate, adjustment_exp=val, ema_w=ema_w,
+                                              change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
-    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
+    plt.title(f"R Squared vs Chaos Punishment\nOver {epochs} epochs on SBSDD")
+    plt.plot(adjustment_exp, adalpha_r_2, "r-", label="Adalpha R2")
     plt.legend()
     plt.grid(True)
     plt.show()
 
-def bike_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99], change=0.99, chaos_punishment=2):
+def bike_ema_w_test(callback,
+                    optimizer,
+                    epochs=50,
+                    learning_rate=0.01,
+                    ema_w=[0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99],
+                    change=0.99,
+                    adjustment_exp=2):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
     for val in ema_w:
-        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
+        adalpha_r_2.append(adalpha_train_bike(callback=callback, optimizer=optimizer, epochs=epochs,
+                                              learning_rate=learning_rate, adjustment_exp=adjustment_exp,
+                                              ema_w=val, change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
@@ -90,10 +118,23 @@ def bike_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0
     plt.grid(True)
     plt.show()
 
-def bike_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+def bike_lr_curve(callback,
+                  optimizer,
+                  epochs=10,
+                  learning_rates=[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5],
+                  ema_w=0.9,
+                  change=0.99,
+                  adjustment_exp=6,
+                  tests=10,
+                  copy=False):
     results = []
     for lr in learning_rates:
-        results.append(np.mean(bike_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
+        results.append(np.mean(bike_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs,
+                                                  learning_rate=lr,
+                                                  ema_w=ema_w,
+                                                  change=change,
+                                                  adjustment_exp=adjustment_exp,
+                                                  tests=tests, copy=False), axis=0))
 
     results = np.asarray(results)
     print(results)
@@ -111,7 +152,7 @@ def bike_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.0001, 0.0005
     if copy:
         pd.DataFrame(results).to_clipboard(excel=True)
 
-def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=2):
+def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, change=0.99, adjustment_exp=2):
     """
     Trains a neural network on the MNIST dataset using Adalpha optimization.
 
@@ -122,13 +163,16 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, cha
         learning_rate (float): The learning rate to use.
         ema_w (float): The EMA weight to use.
         change (float): The change value to use.
-        chaos_punishment (int): The chaos punishment value to use.
+        adjustment_exp (int): The chaos punishment value to use.
 
     Returns:
         A tuple containing the accuracy of the Adalpha model, the predictions from the Adalpha model, and the true labels for the test set.
     """
 
-    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_mnist(callback=callback, optimizer=optimizer,
+                                                                      epochs=epochs, learning_rate=learning_rate,
+                                                                      adjustment_exp=adjustment_exp, ema_w=ema_w,
+                                                                      change=change)
     acc, y_pred, y_test = adam_train_mnist(epochs, learning_rate)
     plt.show()
     # ====================
@@ -170,18 +214,26 @@ def mnist_test(callback, optimizer, epochs=5, learning_rate=0.01, ema_w=0.9, cha
     plt.show()
     return adalpha_acc, acc
 
-def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=4, tests=10, copy=False):
+def mnist_multiple_test(callback,
+                        optimizer,
+                        epochs=10,
+                        learning_rate=0.01,
+                        ema_w=0.9,
+                        change=0.99,
+                        adjustment_exp=4,
+                        tests=10,
+                        copy=False):
     """
     Runs multiple tests of the MNIST_test function.
 
     Parameters:
-        callback (function): The chaos callback function to use.
-        optimizer (function): The chaos optimizer function to use.
+        callback (object): The chaos callback function to use.
+        optimizer (object): The chaos optimizer function to use.
         epochs (int): The number of epochs to train for.
         learning_rate (float): The learning rate to use.
         ema_w (float): The EMA weight to use.
         change (float): The change value to use.
-        chaos_punishment (int): The chaos punishment value to use.
+        adjustment_exp (int): The chaos punishment value to use.
         tests (int): The number of tests to run.
         copy (bool): Whether to copy the results to the clipboard in Excel format.
 
@@ -191,41 +243,59 @@ def mnist_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_
     losses = []
     for i in range(tests):
         losses.append(
-            mnist_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change))
+            mnist_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate,
+                       adjustment_exp=adjustment_exp, ema_w=ema_w, change=change))
 
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     return losses
 
 
-def mnist_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def mnist_chaos_test(callback,
+                     optimizer,
+                     epochs=2,
+                     learning_rate=0.01,
+                     ema_w=0.9,
+                     change=0.99,
+                     adjustment_exp=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
-    for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
+    for val in adjustment_exp:
+        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs,
+                                               learning_rate=learning_rate, adjustment_exp=val, ema_w=ema_w,
+                                               change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
-    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
+    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs on MNIST")
+    plt.plot(adjustment_exp, adalpha_r_2, "r-", label="Adalpha Accuracy")
     plt.legend()
     plt.grid(True)
     plt.show()
 
 
-def mnist_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99, chaos_punishment=2):
+def mnist_ema_w_test(callback,
+                     optimizer,
+                     epochs=50,
+                     learning_rate=0.01,
+                     ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999],
+                     change=0.99,
+                     adjustment_exp=2,
+                     tests=5):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
     for val in ema_w:
-        adalpha_r_2.append(adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
+        adalpha_r_2.append(np.mean([adalpha_train_mnist(callback=callback, optimizer=optimizer, epochs=epochs,
+                                                        learning_rate=learning_rate, adjustment_exp=adjustment_exp,
+                                                        ema_w=val, change=change)[0] for _ in range(tests)], axis=0))
 
     plt.clf()
     # Graphing the Adalpha Results
@@ -237,10 +307,20 @@ def mnist_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[
     plt.grid(True)
     plt.show()
 
-def mnist_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+def mnist_lr_curve(callback,
+                   optimizer,
+                   epochs=10,
+                   learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
+                   ema_w=0.9,
+                   change=0.99,
+                   adjustment_exp=6,
+                   tests=10,
+                   copy=False):
     results = []
     for lr in learning_rates:
-        results.append(np.mean(mnist_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
+        results.append(np.mean(mnist_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs,
+                                                   learning_rate=lr, ema_w=ema_w, change=change,
+                                                   adjustment_exp=adjustment_exp, tests=tests, copy=False), axis=0))
 
     results = np.asarray(results)
     print(results)
@@ -257,9 +337,12 @@ def mnist_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.00001, 0.00
     if copy:
         pd.DataFrame(results).to_clipboard(excel=True)
 
-def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6):
+def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, adjustment_exp=6):
     print("Evaluating Adalpha")
-    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=ema_w, change=change)
+    adalpha_acc, adalpha_y_pred, adalpha_y_test = adalpha_train_cifar(callback=callback, optimizer=optimizer,
+                                                                      epochs=epochs, learning_rate=learning_rate,
+                                                                      adjustment_exp=adjustment_exp, ema_w=ema_w,
+                                                                      change=change)
     print("Evaluating Adam")
     acc, y_pred, y_test = adam_train_cifar(epochs, learning_rate)
 
@@ -299,60 +382,72 @@ def cifar_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, ch
     plt.show()
     return adalpha_acc, acc
 
-def cifar_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+def cifar_multiple_test(callback, optimizer, epochs=10, learning_rate=0.01, ema_w=0.9, change=0.99, adjustment_exp=6,
+                        tests=10, copy=False):
     losses = []
     for i in range(tests):
         losses.append(
             cifar_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate,
-                       chaos_punishment=chaos_punishment, ema_w=ema_w, change=change))
+                       adjustment_exp=adjustment_exp, ema_w=ema_w, change=change))
 
     if copy:
         pd.DataFrame(losses).to_clipboard(excel=True)
     return losses
 
-def cifar_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01, ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99, chaos_punishment=2):
+def cifar_ema_w_test(callback, optimizer, epochs=50, learning_rate=0.01,
+                     ema_w=[0.99, 0.991, 0.992, 0.993, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999], change=0.99,
+                     adjustment_exp=2):
     """
     Main executable for the program
     :return: None
     """
-    adalpha_r_2 = []
+    adalpha_acc = []
     for val in ema_w:
-        adalpha_r_2.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=chaos_punishment, ema_w=val, change=change)[0])
+        adalpha_acc.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs,
+                                               learning_rate=learning_rate, adjustment_exp=adjustment_exp,
+                                               ema_w=val, change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("ema_w")
     plt.ylabel("Loss")
-    plt.title(f"Accuracy vs Ema_w\nOver {epochs} epochs")
-    plt.plot(ema_w, adalpha_r_2, "r-", label="Adalpha Acc")
+    plt.title(f"Accuracy vs Ema_w\nOver {epochs} epochs on CIFAR-10")
+    plt.plot(ema_w, adalpha_acc, "r-", label="Adalpha Acc")
     plt.legend()
     plt.grid(True)
     plt.show()
 
-def cifar_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99, chaos_punishment=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
+def cifar_chaos_test(callback, optimizer, epochs=2, learning_rate=0.01, ema_w=0.9, change=0.99,
+                     adjustment_exp=[0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]):
     """
     Main executable for the program
     :return: None
     """
     adalpha_r_2 = []
-    for val in chaos_punishment:
-        adalpha_r_2.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=learning_rate, chaos_punishment=val, ema_w=ema_w, change=change)[0])
+    for val in adjustment_exp:
+        adalpha_r_2.append(adalpha_train_cifar(callback=callback, optimizer=optimizer, epochs=epochs,
+                                               learning_rate=learning_rate, adjustment_exp=val, ema_w=ema_w,
+                                               change=change)[0])
 
     plt.clf()
     # Graphing the Adalpha Results
     plt.xlabel("Chaos Punishment")
     plt.ylabel("Loss")
-    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs")
-    plt.plot(chaos_punishment, adalpha_r_2, "r-", label="Adalpha R2")
+    plt.title(f"Accuracy vs Chaos Punishment\nOver {epochs} epochs on CIFAR-10")
+    plt.plot(adjustment_exp, adalpha_r_2, "r-", label="Adalpha Accuracy")
     plt.legend()
     plt.grid(True)
     plt.show()
 
 
-def cifar_lr_curve(callback, optimizer, epochs=10, learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], ema_w=0.9, change=0.99, chaos_punishment=6, tests=10, copy=False):
+def cifar_lr_curve(callback, optimizer, epochs=10,
+                   learning_rates=[0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05], ema_w=0.9, change=0.99,
+                   adjustment_exp=6, tests=10, copy=False):
     results = []
     for lr in learning_rates:
-        results.append(np.mean(cifar_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs, learning_rate=lr, ema_w=ema_w, change=change, chaos_punishment=chaos_punishment, tests=tests, copy=False), axis=0))
+        results.append(np.mean(cifar_multiple_test(callback=callback, optimizer=optimizer, epochs=epochs,
+                                                   learning_rate=lr, ema_w=ema_w, change=change,
+                                                   adjustment_exp=adjustment_exp, tests=tests, copy=False), axis=0))
 
     results = np.asarray(results)
     print(results)
@@ -375,7 +470,7 @@ def cartpole_test(callback,
                   learning_rate=0.01,
                   ema_w=0.99,
                   change=0.99,
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=10000,
                   cycles=15,
                   tests=10,
@@ -384,7 +479,8 @@ def cartpole_test(callback,
                   rl_learning_rate=0.2,
                   gamma=0.9,
                   exp_decay=0.995,
-                  exploration_rate=0.8):
+                  exploration_rate=0.8,
+                  max_steps=500):
     """
     Executes the cartpole test with the given parameters.
 
@@ -395,7 +491,7 @@ def cartpole_test(callback,
         learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
         ema_w (float, optional): The exponential moving average weight for the callback. Defaults to 0.99.
         change (float, optional): The change threshold for the callback. Defaults to 0.99.
-        chaos_punishment (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
+        adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
         tests (int, optional): The number of tests to run per cycle. Defaults to 10.
@@ -416,7 +512,7 @@ def cartpole_test(callback,
     adam_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     # Create the AdAlpha_Momentum optimizer
-    adalpha_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
 
     callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
 
@@ -431,7 +527,8 @@ def cartpole_test(callback,
                          learning_rate=rl_learning_rate,
                          gamma=gamma,
                          exp_decay=exp_decay,
-                         exploration_rate=exploration_rate)
+                         exploration_rate=exploration_rate,
+                         max_steps=max_steps)
 
     adalpha_results = train(callback=callback,
                             optimizer=adalpha_optimizer,
@@ -444,7 +541,8 @@ def cartpole_test(callback,
                             learning_rate=rl_learning_rate,
                             gamma=gamma,
                             exp_decay=exp_decay,
-                            exploration_rate=exploration_rate)
+                            exploration_rate=exploration_rate,
+                            max_steps=max_steps)
 
     # Plot the results
     plt.plot(adalpha_results, label="AdAlpha")
@@ -460,7 +558,7 @@ def cartpole_multiple_test(callback,
                   learning_rate=0.01,
                   ema_w=0.99,
                   change=0.99,
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=1000,
                   cycles=30,
                   rl_tests=10,
@@ -471,7 +569,8 @@ def cartpole_multiple_test(callback,
                   exp_decay=0.995,
                   exploration_rate=0.8,
                   tests=10,
-                  copy=True):
+                  copy=True,
+                  max_steps=500):
     """
         A function that performs multiple tests of the CartPole environment using a given callback and optimizer.
 
@@ -482,7 +581,7 @@ def cartpole_multiple_test(callback,
             learning_rate (float, optional): The learning rate for the optimizer. Defaults to 0.01.
             ema_w (float, optional): The exponential moving average weight for the optimizer. Defaults to 0.99.
             change (float, optional): The change threshold for the optimizer. Defaults to 0.99.
-            chaos_punishment (int, optional): The punishment factor for chaos state. Defaults to 2.
+            adjustment_exp (int, optional): The punishment factor for chaos state. Defaults to 2.
             memory_size (int, optional): The size of the replay memory. Defaults to 10000.
             cycles (int, optional): The number of cycles for training. Defaults to 30.
             rltests (int, optional): The number of tests for reinforcement learning. Defaults to 10.
@@ -506,7 +605,7 @@ def cartpole_multiple_test(callback,
                                                       learning_rate=learning_rate,
                                                       ema_w=ema_w,
                                                       change=change,
-                                                      chaos_punishment=chaos_punishment,
+                                                      adjustment_exp=adjustment_exp,
                                                       tests=rl_tests,
                                                       memory_size=memory_size,
                                                       cycles=cycles,
@@ -516,16 +615,18 @@ def cartpole_multiple_test(callback,
                                                       rl_learning_rate=rl_learning_rate,
                                                       gamma=gamma,
                                                       exp_decay=exp_decay,
-                                                      exploration_rate=exploration_rate)
-        losses.append([np.mean(adalpha_results), np.max(adalpha_results), np.min(adalpha_results), np.mean(adam_results), np.max(adam_results), np.min(adam_results)])
+                                                      exploration_rate=exploration_rate,
+                                                      max_steps=max_steps)
+        losses.append([np.mean(adalpha_results), np.max(adalpha_results), np.min(adalpha_results),
+                       np.mean(adam_results), np.max(adam_results), np.min(adam_results)])
+        if copy:
+            pd.DataFrame(np.asarray(losses)[:, [0, 3]]).to_clipboard(excel=True)
 
     plt.plot(losses, label=["Adalpha Mean", "Adalpha Max", "Adalpha Min", "Adam Mean", "Adam Max", "Adam Min"])
     plt.legend()
     plt.title("CartPole Test Results")
     plt.show()
-    if copy:
-        pd.DataFrame(np.asarray(losses)[:, [0, 3]]).to_clipboard(excel=True)
-    return losses
+
 
 def cartpole_ema_w_test(callback,
                   optimizer,
@@ -533,7 +634,7 @@ def cartpole_ema_w_test(callback,
                   learning_rate=0.01,
                   ema_w=[0.99],
                   change=0.99,
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=10000,
                   cycles=30,
                   rl_tests=10,
@@ -552,7 +653,7 @@ def cartpole_ema_w_test(callback,
                                                       learning_rate=learning_rate,
                                                       ema_w=weight,
                                                       change=change,
-                                                      chaos_punishment=chaos_punishment,
+                                                      adjustment_exp=adjustment_exp,
                                                       tests=rl_tests,
                                                       memory_size=memory_size,
                                                       cycles=cycles,
@@ -571,7 +672,7 @@ def cartpole_ema_w_test(callback,
     plt.xlabel("lr")
     plt.ylabel("Loss")
     plt.xscale("log")
-    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on CIFAR")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on Cartpole")
     plt.plot(ema_w, results[:, 0], "r-", label="Adalpha Loss")
     plt.plot(ema_w, results[:, 1], "b-", label="Adam Loss")
     plt.legend()
@@ -585,7 +686,7 @@ def cartpole_change_test(callback,
                   learning_rate=0.01,
                   ema_w=0.99,
                   change=[0.8, 0.99],
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=10000,
                   cycles=30,
                   rl_tests=10,
@@ -604,7 +705,7 @@ def cartpole_change_test(callback,
                                                       learning_rate=learning_rate,
                                                       ema_w=ema_w,
                                                       change=val,
-                                                      chaos_punishment=chaos_punishment,
+                                                      adjustment_exp=adjustment_exp,
                                                       tests=rl_tests,
                                                       memory_size=memory_size,
                                                       cycles=cycles,
@@ -623,10 +724,33 @@ def cartpole_change_test(callback,
     plt.xlabel("lr")
     plt.ylabel("Loss")
     plt.xscale("log")
-    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on CIFAR")
+    plt.title(f"Loss vs Learning Rate\nOver {epochs} epochs on Cartpole")
     plt.plot(ema_w, results[:, 0], "r-", label="Adalpha Loss")
     plt.plot(ema_w, results[:, 1], "b-", label="Adam Loss")
     plt.legend()
     plt.show()
     if copy:
         pd.DataFrame(results).to_clipboard(excel=True)
+
+def run_all_tests_for_paper():
+    mnist_multiple_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=10, learning_rate=0.001, adjustment_exp=2,
+                        ema_w=0.9, change=0.99, copy=True, tests=10)
+
+    cifar_multiple_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=10, learning_rate=0.0001, adjustment_exp=2,
+                        ema_w=0.8, change=0.9, copy=True, tests=50)
+
+    cifar_multiple_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=10, learning_rate=0.0001, adjustment_exp=2,
+                        ema_w=0.9, change=0.99, copy=True, tests=50)
+
+    cartpole_multiple_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, exploration_rate=0.4, epochs=10,
+                           learning_rate=0.0001, adjustment_exp=2, ema_w=0.8, change=0.9, cycles=10, copy=True,
+                           tests=50, max_steps=500)
+
+    mnist_chaos_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=10, learning_rate=0.001)
+
+    cifar_chaos_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=50, learning_rate=0.0001)
+
+    bike_chaos_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=50)
+
+    mnist_ema_w_test(AA.Adalpha_Callback, AA.Adalpha_Momentum, epochs=50, learning_rate=0.001, adjustment_exp=2,
+                     ema_w=[0.8, 0.85, 0.9, 0.95, 0.99])

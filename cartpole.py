@@ -169,7 +169,9 @@ class RLAgent:
             actions = np.asarray([i[2] for i in batch])
             nn_outs = self.model.predict(states_batch, verbose=0)
             #Calculate Q values
-            q_vals = nn_outs[np.arange(len(nn_outs)), actions] * (1-self.learning_rate) + self.learning_rate * (rewards + self.gamma * np.max(self.model(next_state), axis=1))
+            q_vals = (nn_outs[np.arange(len(nn_outs)), actions] *
+                      (1-self.learning_rate) + self.learning_rate *
+                      (rewards + self.gamma * np.max(self.model(next_state), axis=1)))
             nn_outs[np.arange(len(nn_outs)), actions] = q_vals
 
 
@@ -282,7 +284,8 @@ def train(callback,
           learning_rate=0.2,
           gamma=0.9,
           exp_decay=0.995,
-          exploration_rate=0.8):
+          exploration_rate=0.8,
+          max_steps=1000):
     """
     Trains a reinforcement learning agent using the given callback function, optimizer, and hyperparameters.
 
@@ -306,7 +309,7 @@ def train(callback,
     # setup the simulation
     env = gym.make(
         ENV_NAME)  # include render_mode="human" if you want to see the action
-    env._max_episode_steps = 1000  # this is our ultimate goal...
+    env._max_episode_steps = max_steps  # this is our ultimate goal...
     # get size of observation (states) and action spaces
     observation_space = env.observation_space.shape[0]
     action_space = env.action_space.n
@@ -330,7 +333,7 @@ def train(callback,
 
     # Create some preliminary training data
 
-    for sim_run in range(learning_size):
+    for sim_run in range(learning_size*2):
         # reset the simulation
         sim_state = env.reset()
         # state = [position of cart, velocity of cart, angle of pole, Pole Velocity At Tip]
@@ -388,8 +391,10 @@ def train(callback,
             #   o some info value we never use
             sim_state_next, reward, sim_done, truncated, info = env.step(action)
             sim_state_next = np.reshape(sim_state_next, [1, observation_space])
-            the_agent.store_sim_results(sim_state, calc_reward(sim_state, reward, sim_step, sim_state_next), action, sim_state_next)
-            if sim_step>1000:
+            the_agent.store_sim_results(sim_state,
+                                        calc_reward(sim_state, reward, sim_step, sim_state_next), action,
+                                        sim_state_next)
+            if sim_step>max_steps:
                 sim_done = True
 
             if sim_done:
@@ -446,7 +451,7 @@ def cartpole_test(callback,
                   learning_rate=0.01,
                   ema_w=0.99,
                   change=0.99,
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=10000,
                   cycles=30,
                   tests=10,
@@ -466,7 +471,7 @@ def cartpole_test(callback,
         learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
         ema_w (float, optional): The exponential moving average weight for the callback. Defaults to 0.99.
         change (float, optional): The change threshold for the callback. Defaults to 0.99.
-        chaos_punishment (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
+        adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
         tests (int, optional): The number of tests to run per cycle. Defaults to 10.
@@ -487,7 +492,7 @@ def cartpole_test(callback,
     adam_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     # Create the AdAlpha_Momentum optimizer
-    adalpha_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
 
     callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
 

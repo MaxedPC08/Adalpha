@@ -61,13 +61,13 @@ def adam_train_bike(epochs: int = 100, learning_rate: float = 0.01) -> Tuple[flo
     return r2_score(y_pred, y_test), y_pred, y_test
 
 def adalpha_train_bike(
-    callback: AA.Adalpha_Callback,
+    callback: AA.AdalphaCallback,
     optimizer: AA.Adalpha,
     epochs: int = 100,
     learning_rate: float = 0.01,
     change: float = 0.99,
     ema_w: float = 0.9,
-    chaos_punishment: int = 6,
+    adjustment_exp: int = 6,
 ) -> tuple[ndarray[Any, dtype[generic | generic | Any]], Any, ndarray[Any, dtype[generic | generic | Any]]]:
     """
     Trains a bike sharing model using the Adalpha optimizer.
@@ -77,7 +77,7 @@ def adalpha_train_bike(
         optimizer callable: A function that returns an Optimizer object.
         epochs (int, optional): The number of epochs to train for. Defaults to 100.
         learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
-        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+        adjustment_exp (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
 
     Returns:
         tuple[float, np.ndarray, np.ndarray]: A tuple containing the R^2 score on the test data, the predicted values, and the true values.
@@ -115,7 +115,7 @@ def adalpha_train_bike(
     model = tf.keras.Model(input_layer, model)
 
     # Train with Adalpha
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
     callbacks = [callback(my_optimizer, ema_w, change)]
 
     model.compile(optimizer=my_optimizer, loss="mse")
@@ -136,13 +136,13 @@ def adalpha_train_bike(
     return r2_score(y_pred, y_test), y_pred, y_test
 
 def adalpha_new_train_bike(
-    callback: AA.Adalpha_Callback,
+    callback: AA.AdalphaCallback,
     optimizer: AA.Adalpha,
     epochs: int = 100,
     learning_rate: float = 0.01,
     change: float = 0.99,
     ema_w: float = 0.9,
-    chaos_punishment: int = 6,
+    adjustment_exp: int = 6,
     plot: bool = False
 ) -> tuple[ndarray[Any, dtype[generic | generic | Any]], Any, ndarray[Any, dtype[generic | generic | Any]]]:
     """
@@ -153,7 +153,7 @@ def adalpha_new_train_bike(
         optimizer callable: A function that returns an Optimizer object.
         epochs (int, optional): The number of epochs to train for. Defaults to 100.
         learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
-        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+        adjustment_exp (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
 
     Returns:
         tuple[float, np.ndarray, np.ndarray]: A tuple containing the R^2 score on the test data, the predicted values, and the true values.
@@ -180,7 +180,7 @@ def adalpha_new_train_bike(
     y_data = y_data[:int(x_data.shape[0] * SPLIT), :]
     x_data = x_data[:int(x_data.shape[0] * SPLIT), :]
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
 
     # Create Model
     input_layer = tf.keras.layers.Input(shape=(15))
@@ -205,6 +205,7 @@ def adalpha_new_train_bike(
 
     plt.plot(history.history["loss"], "g-", label="Adalpha Loss")
     plt.plot(history.history["val_loss"], "b-", label="Adalpha Val Loss")
+    plt.title(f"Bike Test Adalpha ema_w={ema_w}, learning rate={learning_rate}")
     orig_r2 = r2_score(model.predict(x_test, verbose=False), y_test)
     return r2_score(y_pred, y_test), y_pred, y_test
 
@@ -247,13 +248,13 @@ def adam_train_mnist(epochs: int = 10, learning_rate: float = 0.01) -> Tuple[flo
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
 def adalpha_train_mnist(
-        callback: AA.Adalpha_Callback,
+        callback: AA.AdalphaCallback,
         optimizer: AA.Adalpha,
         epochs: int = 100,
         learning_rate: float = 0.01,
         change: float = 0.99,
         ema_w: float = 0.9,
-        chaos_punishment: int = 6,
+        adjustment_exp: int = 6,
 ) -> tuple[float, np.ndarray, np.ndarray]:
     """
     Trains a MNIST classifier using the Adalpha optimizer.
@@ -263,7 +264,7 @@ def adalpha_train_mnist(
         optimizer (callable): A function that returns an Optimizer object.
         epochs (int, optional): The number of epochs to train for. Defaults to 10.
         learning_rate (float, optional): The learning rate to use for Adalpha. Defaults to 0.01.
-        chaos_punishment (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
+        adjustment_exp (int, optional): The chaos punishment value to use for Adalpha. Defaults to 6.
 
     Returns:
         tuple[float, np.ndarray, np.ndarray]: A tuple containing the accuracy on the test data, the predicted values, and the true values.
@@ -283,7 +284,7 @@ def adalpha_train_mnist(
     model = tf.keras.Model(input_layer, output)
 
     # Train with Adalpha
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
     callbacks = [callback(my_optimizer, ema_w=ema_w, change=change)]
     model.compile(optimizer=my_optimizer, loss=tf.keras.losses.sparse_categorical_crossentropy,
                   metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
@@ -364,13 +365,13 @@ def adam_train_cifar(epochs: int = 10,
     return model.evaluate(x_test, y_test)[1], y_pred, y_test
 
 def adalpha_train_cifar(
-    callback: AA.Adalpha_Callback,
+    callback: AA.AdalphaCallback,
     optimizer: AA.Adalpha,
     epochs: int = 10,
     learning_rate: float = 0.01,
     ema_w: float = 0.9,
     change: float = 0.99,
-    chaos_punishment: int = 6
+    adjustment_exp: int = 6
 ) -> Tuple[float, np.ndarray, np.ndarray]:
     """
     Trains a CIFAR-10 classifier using the AdAlpha algorithm.
@@ -381,7 +382,7 @@ def adalpha_train_cifar(
         learning_rate: Learning rate for the optimizer. Default is 0.01.
         ema_w: Exponential moving average weight. Default is 0.9.
         change: Change factor used in the optimizer. Default is 0.99.
-        chaos_punishment: Chaos punishment factor used in the optimizer. Default is 6.
+        adjustment_exp: Chaos punishment factor used in the optimizer. Default is 6.
     Returns:
         accuracy: Accuracy of the trained model on the test set.
         y_pred: Predicted labels for the test set.
@@ -401,7 +402,7 @@ def adalpha_train_cifar(
 
     model = tf.keras.Model(input_layer, output)
 
-    my_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    my_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
     callbacks = [callback(my_optimizer, ema_w=ema_w, change=change)]
 
     model.compile(optimizer=my_optimizer,
@@ -482,6 +483,7 @@ def adam_train_cartpole(epochs=50,
 
     # Plot the results
     plt.xlabel("Test")
+    plt.title(f"Cartpole Test Adam, learning rate={learning_rate}")
     plt.ylabel("Iteration")
     plt.plot(adam_results, label="Adam")
     plt.legend()
@@ -489,13 +491,13 @@ def adam_train_cartpole(epochs=50,
 
     return adam_results
 
-def adalpha_train_cartpole(callback: AA.Adalpha_Callback,
+def adalpha_train_cartpole(callback: AA.AdalphaCallback,
                   optimizer,
                   epochs=50,
                   learning_rate=0.01,
                   ema_w=0.99,
                   change=0.99,
-                  chaos_punishment=2,
+                  adjustment_exp=2,
                   memory_size=10000,
                   cycles=30,
                   tests=10,
@@ -515,7 +517,7 @@ def adalpha_train_cartpole(callback: AA.Adalpha_Callback,
         learning_rate (float, optional): The learning rate for the optimizers. Defaults to 0.01.
         ema_w (float, optional): The exponential moving average weight for the callback. Defaults to 0.99.
         change (float, optional): The change threshold for the callback. Defaults to 0.99.
-        chaos_punishment (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
+        adjustment_exp (int, optional): The punishment factor for chaos in the optimizer. Defaults to 2.
         memory_size (int, optional): The size of the memory for the optimizer. Defaults to 10000.
         cycles (int, optional): The number of cycles to run the test. Defaults to 30.
         tests (int, optional): The number of tests to run per cycle. Defaults to 10.
@@ -530,7 +532,7 @@ def adalpha_train_cartpole(callback: AA.Adalpha_Callback,
         list: The results of the test.
     """
     # Create the AdAlpha_Momentum optimizer
-    adalpha_optimizer = optimizer(learning_rate=learning_rate, chaos_punishment=chaos_punishment)
+    adalpha_optimizer = optimizer(learning_rate=learning_rate, adjustment_exp=adjustment_exp)
 
     callback = callback(adalpha_optimizer, ema_w=ema_w, change=change)
 
@@ -550,6 +552,7 @@ def adalpha_train_cartpole(callback: AA.Adalpha_Callback,
     # Plot the results
     plt.xlabel("Test")
     plt.ylabel("Iteration")
+    plt.title(f"Cartpole Test Adalpha ema_w={ema_w}, learning rate={learning_rate}")
     plt.plot(adalpha_results, label="Adam")
     plt.legend()
     plt.show()

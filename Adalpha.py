@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 
 
 
-class Adalpha(Optimizer):
+class AdalphaBase(Optimizer):
     r"""Base class - do not use (yet)
     """
 
     def __init__(
             self,
             learning_rate=0.001,
-            chaos_punishment=1,
+            adjustment_exp=1,
             alpha_ema_w=0.9,
             beta_1=0.9,
             beta_2=0.999,
@@ -48,7 +48,7 @@ class Adalpha(Optimizer):
         self.beta_2 = beta_2
         self.epsilon = epsilon
         self.amsgrad = amsgrad
-        self.chaos_punish = chaos_punishment
+        self.chaos_punish = adjustment_exp
         self.std = 1.0
 
     def build(self, var_list):
@@ -152,13 +152,13 @@ class Adalpha(Optimizer):
         return config
 
 
-class Adalpha_Momentum(Adalpha):
+class Adalpha(AdalphaBase):
     """
     Optimizer for Tensorflow Keras based on the Adam optimizer. This version implements two changes:
     1: Adalpha adjusts the alpha value based on the value passed in through the update_loss method.
     This method is typically implemented in a callback at the end of each batch. Alpha is multiplied by
-                            L**chaos_punishment
-    chaos_punishment is a value passed into the optimizer on initiation. L is the value passed in through update_loss,
+                            L**adjustment_exp
+    adjustment_exp is a value passed into the optimizer on initiation. L is the value passed in through update_loss,
     and should never exceed 1.
 
     2: Adalpha adjusts the momentum and velocity of all weights using the function
@@ -176,8 +176,10 @@ class Adalpha_Momentum(Adalpha):
         :praram m: the value being activated, any Tensorflow.math compatible Tensorflow Tensor
         :return: the activated value - Tensorflow Tensor of same input type
         """
-        return m * tf.pow(2 - tf.math.divide_no_nan((tf.square(m) - tf.square(0.01 * tf.abs(tf.abs(tf.reduce_mean(m)) - tf.math.reduce_std(m)))),
-                                                 (tf.square(m) + 0.1 * tf.square(tf.abs(tf.reduce_mean(m)) - tf.math.reduce_std(m)))), 2)
+        return m * tf.pow(2 - tf.math.divide_no_nan((tf.square(m) - tf.square(0.01 * tf.abs(tf.abs(tf.reduce_mean(m)) -
+                                                                                            tf.math.reduce_std(m)))),
+                                                 (tf.square(m) + 0.1 * tf.square(tf.abs(tf.reduce_mean(m)) -
+                                                                                 tf.math.reduce_std(m)))), 2)
 
     def update_step(self, gradient, variable):
         """Update step given gradient and the associated model variable."""
@@ -224,7 +226,7 @@ class Adalpha_Momentum(Adalpha):
             variable.assign_sub((m * alpha) / (tf.sqrt(v) + self.epsilon))
 
 
-class Adalpha_Callback(tf.keras.callbacks.Callback):
+class AdalphaCallback(tf.keras.callbacks.Callback):
     """A class that updates the loss of the Max_Adam optimizer.
     Uses a ratio of two weighted exponential moving averages of the loss of the model.
     Experimental"""
@@ -247,7 +249,7 @@ class Adalpha_Callback(tf.keras.callbacks.Callback):
         self.loss = logs["loss"]
         self._calculate_loss_std()
 
-class Adalpha_Plot(Adalpha_Callback):
+class AdalphaPlot(AdalphaCallback):
     def __init__(self, optimizer: Adalpha, ema_w, change=0.99):
         super().__init__(optimizer, ema_w, change)
         self.stds = [0]
@@ -260,9 +262,13 @@ class Adalpha_Plot(Adalpha_Callback):
 
     def on_train_end(self, logs=None):
         plt.clf()
-        plt.plot(self.stds, "r-", label="adalpha learning rate")
+        plt.title(f"Adalpha Alpha, ema_w = {self.ema_w}, change = {self.change}")
+        plt.plot(self.stds, "r-", label="Adalpha Alpha")
+        plt.xlabel("Batch")
+        plt.ylabel("Alpha")
         plt.legend()
         plt.show()
+        print(f"Ema_w = {self.ema_w}, Change = {self.change}, r mean = {np.mean(self.stds)/self.optimizer.learning_rate}")
 
 
 
