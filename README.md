@@ -68,3 +68,6 @@ Installing
 ----------
 
 Installing Adalpha is simple. Just clone the repository and run `pip install .` in the root directory.
+
+
+yassssssss queeeeen slayyyyyyyyyyyyyyyyyy the house down gurl
