@@ -67,7 +67,4 @@ The second callback is the `AdalphaPlot` callback, which is used to plot the cha
 Installing
 ----------
 
-Installing Adalpha is simple. Just clone the repository and run `pip install .` in the root directory.
-
-
-yassssssss queeeeen slayyyyyyyyyyyyyyyyyy the house down gurl
+Installing Adalpha is simple. Just clone the repository into `site-packages`, then cd into the `Max_AI` folder and run `pip install .` in the root directory.
