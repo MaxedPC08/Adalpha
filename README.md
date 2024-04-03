@@ -67,4 +67,4 @@ The second callback is the `AdalphaPlot` callback, which is used to plot the cha
 Installing
 ----------
 
-Installing Adalpha is simple. Just clone the repository into `site-packages`, then cd into the `Adalpha` folder and run `pip install .` in the root directory.
+Installing Adalpha is simple. Just clone the repository into `site-packages`, then cd into the `Adalpha-master` folder and run `pip install .` in the root directory.
