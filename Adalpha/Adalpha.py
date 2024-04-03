@@ -26,6 +26,7 @@ class AdalphaBase(Optimizer):
             name="Adam",
             ema_w=0.9,
             change=1,
+            *args,
             **kwargs
     ):
         super().__init__(
@@ -169,12 +170,12 @@ class Adalpha(AdalphaBase):
     2: Adalpha adjusts the momentum and velocity of all weights using the function
     out = m * (1.91 - (m**2-(0.01*(|mean(m)| + std(m)))/(m**2 + 0.1 * (|mean(m)| + std(m))**2)))
     """
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Initiator function
         :return: None
         """
-        super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
 
     def _m_activ(self, m):
         """Activate the momentum and velocity of Adam to increase the convergence of low momentum weights.
